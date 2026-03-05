@@ -46,7 +46,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
-      packages: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -58,25 +57,24 @@ jobs:
         with:
           prefix: 'v'
 
-      - name: Login to GitHub Container Registry
+      - name: Login to Docker Hub
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
         uses: docker/login-action@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push server image
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
         run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }} server
-          docker push ghcr.io/${{ github.repository_owner }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }}
+          docker build -t ${{ github.repository_owner }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }} server
+          docker push ${{ github.repository_owner }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }}
 
       - name: Build and push client image
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
         run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/skeleton-app-client:${{ steps.get_next_version.outputs.version }} client
-          docker push ghcr.io/${{ github.repository_owner }}/skeleton-app-client:${{ steps.get_next_version.outputs.version }}
+          docker build -t ${{ github.repository_owner }}/skeleton-app-client:${{ steps.get_next_version.outputs.version }} client
+          docker push ${{ github.repository_owner }}/skeleton-app-client:${{ steps.get_next_version.outputs.version }}
 
       - name: Create release
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
