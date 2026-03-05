@@ -1,0 +1,45 @@
+spring:
+  datasource:
+    url: ${db-url}
+    username: ${db-username}
+    password: ${db-password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    properties:
+      hibernate:
+        show-sql: true
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  cloud:
+    azure:
+      keyvault:
+        secret:
+          property-sources:
+            - endpoint: https://p06-skeleton-app.vault.azure.net/
+              enabled: true
+      active-directory:
+        enabled: true
+        profile:
+          tenant-id: ${tenant-id}
+        credential:
+          client-id: ${api-client-id}
+  ai:
+    anthropic:
+      api-key: ${claude-api-key}
+server:
+  servlet:
+    context-path: /api
+management:
+  server:
+    port: ${SPRING_ACTUATOR_PORT}
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
