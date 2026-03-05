@@ -1,0 +1,32 @@
+:host {
+  display: block;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+h1 {
+  color: var(--mat-sys-on-surface);
+  margin-bottom: 0.5rem;
+}
+
+p {
+  color: var(--mat-app-text-color);
+  margin-bottom: 2rem;
+}
+
+mat-card {
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--mat-sys-surface-container);
+}
+
+.ai-greeting {
+  color: var(--mat-sys-on-surface);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.page-loading {
+  margin: 150px auto;
+}

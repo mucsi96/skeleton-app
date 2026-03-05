@@ -1,0 +1,8 @@
+{
+  "java.compile.nullAnalysis.mode": "disabled",
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "vs-kubernetes": {
+    "vs-kubernetes.namespace": "skeleton-app",
+    "vs-kubernetes.kubeconfig": "${workspaceFolder}/.kube/config"
+  }
+}

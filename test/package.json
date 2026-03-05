@@ -1,0 +1,19 @@
+{
+  "name": "skeleton-app-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E2E tests for Skeleton application",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@types/node": "25.3.3",
+    "@types/pg": "8.18.0",
+    "pg": "8.19.0",
+    "typescript": "5.9.3"
+  }
+}

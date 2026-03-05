@@ -1,0 +1,14 @@
+<mat-toolbar class="header">
+  <nav>
+    <a mat-button routerLink="">Skeleton App</a>
+    @if(isAuthenticated()) {
+    <div class="header-right">
+      <app-header></app-header>
+    </div>
+    }
+  </nav>
+</mat-toolbar>
+
+<main>
+  <router-outlet></router-outlet>
+</main>
