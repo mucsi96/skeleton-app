@@ -1,2 +1,0 @@
-# To update: pip list --outdated
-mucsi96.publish-tools == 41.0.0
