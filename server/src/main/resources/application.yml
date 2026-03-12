@@ -28,6 +28,9 @@ spring:
   ai:
     anthropic:
       api-key: ${claude-api-key}
+      chat:
+        options:
+          model: claude-sonnet-4-6
 server:
   servlet:
     context-path: /api
