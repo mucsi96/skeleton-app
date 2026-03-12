@@ -80,6 +80,16 @@
     },
     {
       "type": "shell",
+      "command": "bash",
+      "label": "Install dependencies",
+      "args": ["scripts/install_dependencies.sh"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "type": "shell",
       "label": "Compose up",
       "command": "scripts/compose_up.sh",
       "problemMatcher": []

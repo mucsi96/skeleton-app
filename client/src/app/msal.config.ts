@@ -48,7 +48,8 @@ export function MSALInstanceFactory(config: EnvironmentConfig): IPublicClientApp
 
 export function MSALInterceptorConfigFactory(config: EnvironmentConfig): MsalInterceptorConfiguration {
   const apiScopes = [
-    `${config.apiClientId}/readData`,
+    `${config.apiClientId}/readGreetings`,
+    `${config.apiClientId}/createGreeting`,
   ];
 
   const protectedResourceMap = new Map<string, Array<string>>();
