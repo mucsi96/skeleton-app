@@ -46,19 +46,21 @@ export function MSALInstanceFactory(config: EnvironmentConfig): IPublicClientApp
   });
 }
 
-export function MSALInterceptorConfigFactory(config: EnvironmentConfig): MsalInterceptorConfiguration {
-  const apiScopes = [
+function getApiScopes(config: EnvironmentConfig): string[] {
+  return [
     `${config.apiClientId}/readGreetings`,
     `${config.apiClientId}/createGreeting`,
   ];
+}
 
+export function MSALInterceptorConfigFactory(config: EnvironmentConfig): MsalInterceptorConfiguration {
   const protectedResourceMap = new Map<string, Array<string>>();
   protectedResourceMap.set('https://graph.microsoft.com/v1.0/me', [
     'user.read',
   ]);
   protectedResourceMap.set(
     `${new URL('/api', window.location.origin).href}/*`,
-    apiScopes
+    getApiScopes(config)
   );
 
   return {
@@ -68,14 +70,10 @@ export function MSALInterceptorConfigFactory(config: EnvironmentConfig): MsalInt
 }
 
 export function MSALGuardConfigFactory(config: EnvironmentConfig): MsalGuardConfiguration {
-  const apiScopes = [
-    `${config.apiClientId}/readData`,
-  ];
-
   return {
     interactionType: InteractionType.Redirect,
     authRequest: {
-      scopes: ['user.read', ...apiScopes],
+      scopes: ['user.read', ...getApiScopes(config)],
     },
   };
 }
