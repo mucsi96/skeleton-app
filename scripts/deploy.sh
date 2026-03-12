@@ -1,0 +1,65 @@
+#!/bin/bash
+
+set -e  # Exit immediately if a command exits with a non-zero status
+
+VAULT_NAME="p06-hello"
+
+KUBE_CONTENT=$(az keyvault secret show --vault-name $VAULT_NAME --name k8s-config --query value -o tsv)
+
+# Create a temporary file in /dev/shm (RAM) to avoid writing to disk
+KUBECONFIG_FILE=$(mktemp /dev/shm/kubeconfig.XXXXXX)
+chmod 600 "$KUBECONFIG_FILE"
+echo "$KUBE_CONTENT" > "$KUBECONFIG_FILE"
+export KUBECONFIG="$KUBECONFIG_FILE"
+
+# Ensure the temporary file is deleted when the script exits
+trap 'rm -f "$KUBECONFIG_FILE"' EXIT
+
+hostname=$(az keyvault secret show --vault-name $VAULT_NAME --name hostname --query value --output tsv)
+apiClientId=$(az keyvault secret show --vault-name $VAULT_NAME --name api-client-id --query value --output tsv)
+# Get latest tags for both server and client
+serverLatestTag=$(curl -s "https://registry.hub.docker.com/v2/repositories/mucsi96/skeleton-app-server/tags/" | jq -r '.results | map(select(.name != "latest")) | sort_by(.last_updated) | reverse | .[0].name')
+clientLatestTag=$(curl -s "https://registry.hub.docker.com/v2/repositories/mucsi96/skeleton-app-client/tags/" | jq -r '.results | map(select(.name != "latest")) | sort_by(.last_updated) | reverse | .[0].name')
+
+echo "Updating Helm repositories..."
+helm repo add mucsi96 https://mucsi96.github.io/k8s-helm-charts --force-update
+
+springAppChartVersion=$(helm search repo mucsi96/spring-app --output json | jq -r '.[0].version')
+clientAppChartVersion=$(helm search repo mucsi96/client-app --output json | jq -r '.[0].version')
+
+echo "Deploying server: mucsi96/skeleton-app-server:$serverLatestTag to $hostname using spring-app chart $springAppChartVersion"
+
+helm upgrade hello-server mucsi96/spring-app \
+    --install \
+    --version $springAppChartVersion \
+    --namespace hello \
+    --set image=mucsi96/skeleton-app-server:$serverLatestTag \
+    --set entryPoint=web \
+    --set host=$hostname \
+    --set basePath=/api \
+    --set clientId=$apiClientId \
+    --set serviceAccountName=hello-api-workload-identity \
+    --set env.AZURE_KEYVAULT_ENDPOINT=https://$VAULT_NAME.vault.azure.net/ \
+    --set env.STORAGE_DIRECTORY=/app/storage \
+    --set persistentVolumeClaims[0].name=hello-pvc \
+    --set persistentVolumeClaims[0].accessMode=ReadWriteOnce \
+    --set persistentVolumeClaims[0].volumeName=hello-app \
+    --set persistentVolumeClaims[0].mountPath=/app/storage \
+    --set persistentVolumeClaims[0].storageClassName="" \
+    --set persistentVolumeClaims[0].storage=5Gi \
+    --set resources.requests.memory=1Gi \
+    --set resources.requests.cpu=1 \
+    --set resources.limits.memory=2Gi \
+    --set resources.limits.cpu=2 \
+    --wait
+
+echo "Deploying client: mucsi96/skeleton-app-client:$clientLatestTag to $hostname using client-app chart $clientAppChartVersion"
+
+helm upgrade hello-client mucsi96/client-app \
+    --install \
+    --version $clientAppChartVersion \
+    --namespace hello \
+    --set image=mucsi96/skeleton-app-client:$clientLatestTag \
+    --set host=$hostname \
+    --set entryPoint=web \
+    --wait

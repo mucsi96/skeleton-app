@@ -17,7 +17,7 @@ spring:
       keyvault:
         secret:
           property-sources:
-            - endpoint: https://p06-skeleton-app.vault.azure.net/
+            - endpoint: ${AZURE_KEYVAULT_ENDPOINT}
               enabled: true
       active-directory:
         enabled: true
