@@ -5,5 +5,5 @@ CREATE TABLE IF NOT EXISTS greetings (
 );
 
 INSERT INTO greetings (name, message)
-SELECT 'World', 'Welcome to the skeleton app!'
+SELECT 'Igor', 'Welcome to the skeleton app!'
 WHERE NOT EXISTS (SELECT 1 FROM greetings);
