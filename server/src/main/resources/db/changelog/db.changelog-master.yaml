@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1-create-greetings-table
+      author: mucsi96
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: greetings
+      changes:
+        - createTable:
+            tableName: greetings
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: name
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: message
+                  type: text
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: 2-seed-initial-greeting
+      author: mucsi96
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: SELECT COUNT(*) FROM greetings
+      changes:
+        - insert:
+            tableName: greetings
+            columns:
+              - column:
+                  name: name
+                  value: Igor
+              - column:
+                  name: message
+                  value: Welcome to the skeleton app!
