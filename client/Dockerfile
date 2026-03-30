@@ -8,7 +8,7 @@ COPY . .
 RUN npm run build
 
 
-FROM nginx:1.29.6
+FROM nginx:1.29.7
 
 RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/*
 
