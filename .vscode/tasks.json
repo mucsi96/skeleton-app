@@ -102,18 +102,6 @@
     },
     {
       "type": "shell",
-      "label": "Dev DB up",
-      "command": "scripts/dev_db_up.sh",
-      "problemMatcher": []
-    },
-    {
-      "type": "shell",
-      "label": "Dev DB down",
-      "command": "scripts/dev_db_down.sh",
-      "problemMatcher": []
-    },
-    {
-      "type": "shell",
       "command": "scripts/deploy.sh",
       "label": "Deploy",
       "options": {
