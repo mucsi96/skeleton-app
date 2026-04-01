@@ -26,8 +26,8 @@ jobs:
       - name: Install Playwright browsers
         working-directory: test
         run: npx playwright install chromium --with-deps
-      - name: Setup test environment and start Docker Compose
-        run: scripts/compose_up.sh
+      - name: Setup test environment and start pod
+        run: scripts/pod_up.sh
       - name: Run Playwright tests
         working-directory: test
         run: npx playwright test
@@ -37,8 +37,14 @@ jobs:
         with:
           name: test-results
           path: test/test-results
-      - run: docker compose logs
+      - name: Collect pod logs
         if: always()
+        run: |
+          for container in $(podman pod inspect skeleton-app-test --format '{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null); do
+            echo "$container" | grep -q "infra" && continue
+            echo "=== $container ==="
+            podman logs "$container" 2>&1 || true
+          done
 
   publish-server:
     runs-on: ubuntu-latest
@@ -62,16 +68,13 @@ jobs:
 
       - name: Login to Docker Hub
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | podman login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin docker.io
 
       - name: Build and push server image
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }} server
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }}
+          podman build -t docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }} server
+          podman push docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }}
 
       - name: Create release
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
@@ -100,16 +103,13 @@ jobs:
 
       - name: Login to Docker Hub
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | podman login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin docker.io
 
       - name: Build and push client image
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-client:${{ steps.get_next_version.outputs.version }} client
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-client:${{ steps.get_next_version.outputs.version }}
+          podman build -t docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-client:${{ steps.get_next_version.outputs.version }} client
+          podman push docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-client:${{ steps.get_next_version.outputs.version }}
 
       - name: Create release
         if: steps.get_next_version.outputs.hasNextVersion == 'true'

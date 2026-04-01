@@ -90,14 +90,26 @@
     },
     {
       "type": "shell",
-      "label": "Compose up",
-      "command": "scripts/compose_up.sh",
+      "label": "Pod up",
+      "command": "scripts/pod_up.sh",
       "problemMatcher": []
     },
     {
       "type": "shell",
-      "label": "Compose down",
-      "command": "docker compose down",
+      "label": "Pod down",
+      "command": "scripts/pod_down.sh",
+      "problemMatcher": []
+    },
+    {
+      "type": "shell",
+      "label": "Dev DB up",
+      "command": "scripts/dev_db_up.sh",
+      "problemMatcher": []
+    },
+    {
+      "type": "shell",
+      "label": "Dev DB down",
+      "command": "scripts/dev_db_down.sh",
       "problemMatcher": []
     },
     {

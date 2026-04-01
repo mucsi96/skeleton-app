@@ -1,4 +1,4 @@
-FROM node:25 AS build
+FROM docker.io/library/node:25 AS build
 
 WORKDIR /workspace
 
@@ -8,7 +8,7 @@ COPY . .
 RUN npm run build
 
 
-FROM nginx:1.29.7
+FROM docker.io/library/nginx:1.29.7
 
 RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/*
 

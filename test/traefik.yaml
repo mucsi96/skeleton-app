@@ -1,15 +1,15 @@
 api:
   dashboard: true
-  insecure: true
 
 entryPoints:
   web:
     address: ":80"
+  traefik:
+    address: ":8081"
 
 providers:
-  docker:
-    exposedByDefault: false
-    network: skeleton-app-test-stack_default
+  file:
+    filename: /etc/traefik/routes.yaml
 
 ping: {}
 

@@ -1,5 +1,5 @@
 # Stage 1: Build server with Maven
-FROM maven:3-eclipse-temurin-21 AS build
+FROM docker.io/library/maven:3-eclipse-temurin-21 AS build
 
 WORKDIR /workspace
 
@@ -14,7 +14,7 @@ RUN mvn package -DskipTests -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli
 RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
 
 # Stage 2: Runtime image
-FROM eclipse-temurin:25-jre
+FROM docker.io/library/eclipse-temurin:25-jre
 
 VOLUME /tmp
 
