@@ -84,7 +84,7 @@ cd client && npm run build    # Production build
 
 ### Backend
 ```bash
-cd server && mvn spring-boot:run -Dspring-boot.run.profiles=local  # Start with local profile
+cd server && mvn spring-boot:test-run  # Start with Testcontainers (auto-starts PostgreSQL)
 ```
 
 ### Podman Development
