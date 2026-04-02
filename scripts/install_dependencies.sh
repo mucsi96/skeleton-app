@@ -48,8 +48,9 @@ if [ "$(uname -s)" = "Linux" ] && [ -f /etc/os-release ]; then
             echo "Podman is already installed."
         fi
 
-        # Enable lingering for rootless Podman
+        # Enable lingering and Podman socket for rootless Podman
         loginctl enable-linger "$(whoami)" 2>/dev/null || true
+        systemctl --user enable --now podman.socket
 
         # Check and install SDKMAN
         if [ ! -d "$HOME/.sdkman" ]; then
