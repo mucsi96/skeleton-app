@@ -91,6 +91,8 @@ cd server && mvn spring-boot:run -Dspring-boot.run.profiles=local  # Start with 
 ```bash
 scripts/pod_up.sh             # Build images and start test pod
 scripts/pod_down.sh           # Stop and clean up test pod
+scripts/dev_db_up.sh          # Start development PostgreSQL database
+scripts/dev_db_down.sh        # Stop development database
 ```
 
 ### Testing

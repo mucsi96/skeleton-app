@@ -1,5 +1,5 @@
 .env
-server/postgres-data
+postgres-data
 server/storage
 server/target
 test/
