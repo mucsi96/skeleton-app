@@ -4,7 +4,6 @@ set -e
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 POD_NAME="skeleton-app-dev-db"
 DB_CONTAINER="skeleton-app-dev-db-db"
-DB_IMAGE="docker.io/library/postgres:17.5-bullseye"
 MAX_WAIT=60
 
 if podman inspect --format='{{.State.Running}}' "$DB_CONTAINER" 2>/dev/null | grep -q "true"; then
@@ -13,24 +12,10 @@ if podman inspect --format='{{.State.Running}}' "$DB_CONTAINER" 2>/dev/null | gr
 fi
 
 echo "Cleaning up existing pod..."
-podman pod rm -f "$POD_NAME" 2>/dev/null || true
+podman kube down "$PROJECT_DIR/server/dev-db-pod.yaml" 2>/dev/null || true
 
-mkdir -p "$PROJECT_DIR/postgres-data"
-
-echo "Creating pod..."
-podman pod create --name "$POD_NAME" -p 5433:5432
-
-echo "Starting database container..."
-podman run -d --pod "$POD_NAME" --name "$DB_CONTAINER" \
-  -e POSTGRES_DB=skeleton \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -v "$PROJECT_DIR/postgres-data:/var/lib/postgresql/data" \
-  --health-cmd "pg_isready -U postgres" \
-  --health-interval 10s \
-  --health-timeout 5s \
-  --health-retries 5 \
-  "$DB_IMAGE"
+echo "Starting dev database pod..."
+podman kube play "$PROJECT_DIR/server/dev-db-pod.yaml"
 
 echo "Waiting for database to become healthy..."
 ELAPSED=0
