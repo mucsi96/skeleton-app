@@ -1,4 +1,8 @@
 spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/skeleton
+    username: postgres
+    password: postgres
   cloud:
     azure:
       active-directory:
