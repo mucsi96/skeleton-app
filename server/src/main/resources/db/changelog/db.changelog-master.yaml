@@ -2,11 +2,6 @@ databaseChangeLog:
   - changeSet:
       id: 1-create-greetings-table
       author: mucsi96
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: greetings
       changes:
         - createTable:
             tableName: greetings
@@ -30,11 +25,6 @@ databaseChangeLog:
   - changeSet:
       id: 2-seed-initial-greeting
       author: mucsi96
-      preConditions:
-        - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: SELECT COUNT(*) FROM greetings
       changes:
         - insert:
             tableName: greetings
