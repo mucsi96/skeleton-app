@@ -1,9 +1,16 @@
 databaseChangeLog:
   - changeSet:
-      id: 1-create-greetings-table
+      id: 1-create-hello-schema
+      author: mucsi96
+      changes:
+        - sql:
+            sql: CREATE SCHEMA IF NOT EXISTS hello
+  - changeSet:
+      id: 2-create-greetings-table
       author: mucsi96
       changes:
         - createTable:
+            schemaName: hello
             tableName: greetings
             columns:
               - column:
@@ -23,10 +30,11 @@ databaseChangeLog:
                   constraints:
                     nullable: false
   - changeSet:
-      id: 2-seed-initial-greeting
+      id: 3-seed-initial-greeting
       author: mucsi96
       changes:
         - insert:
+            schemaName: hello
             tableName: greetings
             columns:
               - column:

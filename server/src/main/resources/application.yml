@@ -12,6 +12,7 @@ spring:
         show-sql: true
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+    default-schema: hello
   cloud:
     azure:
       keyvault:
