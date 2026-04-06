@@ -4,5 +4,8 @@
   "vs-kubernetes": {
     "vs-kubernetes.namespace": "skeleton-app",
     "vs-kubernetes.kubeconfig": "${workspaceFolder}/.kube/config"
+  },
+  "terminal.integrated.env.linux": {
+    "KUBECONFIG": "${workspaceFolder}/.kube/config"
   }
 }
