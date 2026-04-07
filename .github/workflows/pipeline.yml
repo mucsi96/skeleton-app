@@ -6,13 +6,12 @@ on:
       - main
   pull_request:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   test-e2e:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-test-e2e-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -48,6 +47,9 @@ jobs:
 
   publish-server:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-publish-server-${{ github.ref }}
+      cancel-in-progress: true
     needs: test-e2e
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
@@ -85,6 +87,9 @@ jobs:
 
   publish-client:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-publish-client-${{ github.ref }}
+      cancel-in-progress: true
     needs: test-e2e
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
@@ -120,6 +125,9 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-deploy
+      cancel-in-progress: false
     needs: [publish-server, publish-client]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
