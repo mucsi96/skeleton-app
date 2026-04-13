@@ -1,5 +1,6 @@
 package io.github.mucsi96.skeleton.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -13,6 +14,7 @@ public class GreetingController {
   private final GreetingService greetingService;
 
   @GetMapping("/greeting")
+  @PreAuthorize("hasAuthority('APPROLE_GreetingReader') and hasAuthority('SCOPE_readGreetings')")
   public GreetingResponse getGreeting() {
     return greetingService.getGreeting();
   }
