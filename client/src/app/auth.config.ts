@@ -8,7 +8,7 @@ import {
 import { EnvironmentConfig } from './environment/environment.config';
 
 export function provideOidcAuth(config: EnvironmentConfig): EnvironmentProviders {
-  if (config.mockAuth) {
+  if (config.mockOAuth2ServerUri) {
     return provideMockOidcConfig(config);
   }
 

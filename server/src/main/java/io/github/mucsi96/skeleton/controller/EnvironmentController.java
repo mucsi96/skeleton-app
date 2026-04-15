@@ -1,7 +1,6 @@
 package io.github.mucsi96.skeleton.controller;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -10,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 public class EnvironmentController {
-  private final Environment environment;
 
   @Value("${tenant-id:}")
   private String tenantId;
@@ -30,7 +28,6 @@ public class EnvironmentController {
         tenantId,
         uiClientId,
         clientId,
-        environment.matchesProfiles("test"),
         mockOAuth2ServerUri);
   }
 
@@ -38,7 +35,6 @@ public class EnvironmentController {
       String tenantId,
       String clientId,
       String apiClientId,
-      boolean mockAuth,
       String mockOAuth2ServerUri) {
   }
 }
