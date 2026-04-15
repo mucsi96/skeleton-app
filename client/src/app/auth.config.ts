@@ -28,11 +28,9 @@ function provideAzureAdOidcConfig(config: EnvironmentConfig): EnvironmentProvide
         silentRenew: true,
         useRefreshToken: true,
         autoUserInfo: false,
+        disableIatOffsetValidation: true,
         logLevel: LogLevel.Debug,
         secureRoutes: ['/api'],
-        customParamsAuthRequest: {
-          prompt: 'select_account',
-        },
       },
     },
     withAppInitializerAuthCheck()
