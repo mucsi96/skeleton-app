@@ -3,11 +3,6 @@ spring:
     url: jdbc:postgresql://localhost:5433/skeleton
     username: postgres
     password: postgres
-  cloud:
-    azure:
-      active-directory:
-        credential:
-          client-secret: ${api-client-secret}
 management:
   server:
     port: 8182

@@ -23,12 +23,12 @@ spring:
           property-sources:
             - endpoint: ${AZURE_KEYVAULT_ENDPOINT}
               enabled: true
-      active-directory:
-        enabled: true
-        profile:
-          tenant-id: ${tenant-id}
-        credential:
-          client-id: ${api-client-id}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/${tenant-id:}/v2.0
+          audiences: ${api-client-id:}
   ai:
     anthropic:
       api-key: ${claude-api-key}
