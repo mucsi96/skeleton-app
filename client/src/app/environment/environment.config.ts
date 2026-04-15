@@ -5,6 +5,7 @@ export interface EnvironmentConfig {
   clientId: string;
   apiClientId: string;
   mockAuth: boolean;
+  mockOAuth2ServerUri: string;
 }
 
 export const ENVIRONMENT_CONFIG = new InjectionToken<EnvironmentConfig>('ENVIRONMENT_CONFIG');

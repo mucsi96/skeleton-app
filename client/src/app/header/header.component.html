@@ -1,8 +1,8 @@
 <button class="avatar" [matMenuTriggerFor]="menu">
-  {{ profile.value()?.initials }}
+  {{ profile()?.initials }}
 </button>
 <mat-menu #menu="matMenu">
   <span class="profile-name">
-    {{ profile.value()?.name }}
+    {{ profile()?.name }}
   </span>
 </mat-menu>
