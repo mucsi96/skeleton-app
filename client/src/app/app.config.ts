@@ -13,7 +13,8 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { routes } from './app.routes';
 import { errorInterceptor } from './utils/error.interceptor';
 import { timezoneInterceptor } from './utils/timezone.interceptor';
-import { authInterceptor, provideOidcAuth } from './auth.config';
+import { authInterceptor } from 'angular-auth-oidc-client';
+import { provideOidcAuth } from './auth.config';
 import {
   EnvironmentConfig,
   ENVIRONMENT_CONFIG,

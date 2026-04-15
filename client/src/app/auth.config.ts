@@ -1,6 +1,5 @@
 import { EnvironmentProviders } from '@angular/core';
 import {
-  authInterceptor,
   LogLevel,
   provideAuth,
   withAppInitializerAuthCheck,
@@ -59,5 +58,3 @@ function provideMockOidcConfig(config: EnvironmentConfig): EnvironmentProviders 
     withAppInitializerAuthCheck()
   );
 }
-
-export { authInterceptor };
