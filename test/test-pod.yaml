@@ -68,8 +68,12 @@ spec:
       env:
         - name: SERVER_PORT
           value: "8090"
-        - name: JSON_CONFIG
-          value: '{"interactiveLogin":false,"tokenCallbacks":[{"issuerId":"default","tokenExpiry":3600,"requestMappings":[{"requestParam":"scope","match":"*","claims":{"sub":"test-user","name":"Test User","scp":"readGreetings createGreeting","roles":["GreetingReader"]}}]}]}'
+        - name: JSON_CONFIG_PATH
+          value: /config/mock-oauth2-config.json
+      volumeMounts:
+        - name: mock-oauth2-config
+          mountPath: /config/mock-oauth2-config.json
+          readOnly: true
       livenessProbe:
         httpGet:
           path: /default/.well-known/openid-configuration
@@ -123,4 +127,8 @@ spec:
     - name: traefik-routes
       hostPath:
         path: test/traefik-routes.yaml
+        type: File
+    - name: mock-oauth2-config
+      hostPath:
+        path: test/mock-oauth2-config.json
         type: File
