@@ -21,19 +21,24 @@ public class EnvironmentController {
   @Value("${spa-client-id:}")
   private String uiClientId;
 
+  @Value("${mock-oauth-base-url:}")
+  private String mockOAuthBaseUrl;
+
   @GetMapping("/environment")
   public ConfigResponse getConfig() {
     return new ConfigResponse(
         tenantId,
         uiClientId,
         clientId,
-        environment.matchesProfiles("test"));
+        environment.matchesProfiles("test"),
+        mockOAuthBaseUrl);
   }
 
   public record ConfigResponse(
       String tenantId,
       String clientId,
       String apiClientId,
-      boolean mockAuth) {
+      boolean mockAuth,
+      String mockOAuthBaseUrl) {
   }
 }

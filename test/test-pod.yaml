@@ -60,6 +60,24 @@ spec:
         periodSeconds: 2
         failureThreshold: 5
 
+    - name: mock-oauth
+      image: docker.io/oskarq/mock-oauth2-server:2.1.10
+      ports:
+        - containerPort: 8090
+          hostPort: 8090
+      env:
+        - name: SERVER_PORT
+          value: "8090"
+        - name: JSON_CONFIG
+          value: '{"interactiveLogin":false,"tokenCallbacks":[{"issuerId":"default","requestMappings":[{"requestParam":"grant_type","match":"client_credentials","claims":{"sub":"test-user","aud":["test-api"],"scope":"openid readGreetings createGreeting","roles":["GreetingReader"]}}]}]}'
+      livenessProbe:
+        httpGet:
+          path: /default/.well-known/openid-configuration
+          port: 8090
+        initialDelaySeconds: 5
+        periodSeconds: 2
+        failureThreshold: 10
+
     - name: server
       image: localhost/skeleton-app-server:test
       env:
@@ -77,6 +95,10 @@ spec:
           value: mock-anthropic-key
         - name: ANTHROPIC_BASE_URL
           value: http://localhost:3003
+        - name: API_CLIENT_ID
+          value: test-api
+        - name: MOCK_OAUTH_BASE_URL
+          value: http://localhost:8090
       livenessProbe:
         httpGet:
           path: /actuator/health/readiness

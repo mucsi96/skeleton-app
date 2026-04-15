@@ -5,6 +5,11 @@ spring:
         secret:
           property-sources:
             - enabled: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8090/default
   ai:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}
