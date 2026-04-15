@@ -1,8 +1,6 @@
-import { effect, inject, Injectable, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { computed, inject, Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
-import { map } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -11,24 +9,11 @@ export class AuthService {
   private readonly snackBar = inject(MatSnackBar);
   private readonly oidcSecurityService = inject(OidcSecurityService);
 
-  readonly isAuthenticated = signal(false);
-
-  private readonly authResult = toSignal(
-    this.oidcSecurityService.isAuthenticated$.pipe(
-      map(({ isAuthenticated }) => isAuthenticated)
-    )
+  readonly isAuthenticated = computed(
+    () => this.oidcSecurityService.authenticated().isAuthenticated
   );
 
-  readonly userData = toSignal(this.oidcSecurityService.userData$);
-
-  constructor() {
-    effect(() => {
-      const authenticated = this.authResult();
-      if (authenticated !== undefined) {
-        this.isAuthenticated.set(authenticated);
-      }
-    });
-  }
+  readonly userData = this.oidcSecurityService.userData;
 
   login(): void {
     this.oidcSecurityService.authorize();
