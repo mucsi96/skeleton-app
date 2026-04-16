@@ -60,6 +60,36 @@ spec:
         periodSeconds: 2
         failureThreshold: 5
 
+    - name: mock-oauth2
+      image: docker.io/mucsi96/mock-oidc-provider:latest
+      ports:
+        - containerPort: 8090
+          hostPort: 8090
+      env:
+        - name: PORT
+          value: "8090"
+        - name: ISSUER_ID
+          value: default
+        - name: SUB
+          value: test-user
+        - name: NAME
+          value: Test User
+        - name: PREFERRED_USERNAME
+          value: test-user@example.com
+        - name: ROLES
+          value: GreetingReader
+        - name: SCP
+          value: readGreetings createGreeting
+        - name: AUD
+          value: mock-api-client-id
+      livenessProbe:
+        httpGet:
+          path: /health
+          port: 8090
+        initialDelaySeconds: 2
+        periodSeconds: 2
+        failureThreshold: 5
+
     - name: server
       image: localhost/skeleton-app-server:test
       env:
@@ -77,6 +107,8 @@ spec:
           value: mock-anthropic-key
         - name: ANTHROPIC_BASE_URL
           value: http://localhost:3003
+        - name: MOCK_OAUTH2_SERVER_URI
+          value: http://localhost:8090
       livenessProbe:
         httpGet:
           path: /actuator/health/readiness
