@@ -10,6 +10,7 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8090/default
+          audiences: mock-api-client-id
   ai:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}

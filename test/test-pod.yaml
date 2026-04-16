@@ -80,6 +80,8 @@ spec:
           value: GreetingReader
         - name: SCP
           value: readGreetings createGreeting
+        - name: AUD
+          value: mock-api-client-id
       livenessProbe:
         httpGet:
           path: /default/.well-known/openid-configuration
