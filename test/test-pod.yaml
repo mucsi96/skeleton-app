@@ -68,6 +68,18 @@ spec:
       env:
         - name: PORT
           value: "8090"
+        - name: ISSUER_ID
+          value: default
+        - name: SUB
+          value: test-user
+        - name: NAME
+          value: Test User
+        - name: PREFERRED_USERNAME
+          value: test-user@example.com
+        - name: ROLES
+          value: GreetingReader
+        - name: SCP
+          value: readGreetings createGreeting
       livenessProbe:
         httpGet:
           path: /default/.well-known/openid-configuration
