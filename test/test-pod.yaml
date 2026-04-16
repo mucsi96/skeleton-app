@@ -61,26 +61,20 @@ spec:
         failureThreshold: 5
 
     - name: mock-oauth2
-      image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+      image: docker.io/mucsi96/mock-oidc-provider:1
       ports:
         - containerPort: 8090
           hostPort: 8090
       env:
-        - name: SERVER_PORT
+        - name: PORT
           value: "8090"
-        - name: JSON_CONFIG_PATH
-          value: /config/mock-oauth2-config.json
-      volumeMounts:
-        - name: mock-oauth2-config
-          mountPath: /config/mock-oauth2-config.json
-          readOnly: true
       livenessProbe:
         httpGet:
           path: /default/.well-known/openid-configuration
           port: 8090
-        initialDelaySeconds: 5
+        initialDelaySeconds: 2
         periodSeconds: 2
-        failureThreshold: 10
+        failureThreshold: 5
 
     - name: server
       image: localhost/skeleton-app-server:test
@@ -127,8 +121,4 @@ spec:
     - name: traefik-routes
       hostPath:
         path: test/traefik-routes.yaml
-        type: File
-    - name: mock-oauth2-config
-      hostPath:
-        path: test/mock-oauth2-config.json
         type: File
