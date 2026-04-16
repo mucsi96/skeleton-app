@@ -15,7 +15,3 @@ spring:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}
       base-url: ${ANTHROPIC_BASE_URL}
-
-logging:
-  level:
-    org.springframework.security: TRACE
