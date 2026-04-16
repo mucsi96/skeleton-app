@@ -82,7 +82,7 @@ jobs:
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: server-${{ steps.get_next_version.outputs.version }}
+          tag_name: ${{ steps.get_next_version.outputs.tag }}
           generate_release_notes: true
 
   publish-client:
@@ -120,7 +120,7 @@ jobs:
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: client-${{ steps.get_next_version.outputs.version }}
+          tag_name: ${{ steps.get_next_version.outputs.tag }}
           generate_release_notes: true
 
   deploy:
