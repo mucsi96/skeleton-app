@@ -46,7 +46,6 @@ spec:
 
     - name: mock-anthropic
       image: localhost/skeleton-app-mock-anthropic:test
-      imagePullPolicy: Never
       ports:
         - containerPort: 3003
           hostPort: 3003
@@ -93,7 +92,6 @@ spec:
 
     - name: server
       image: localhost/skeleton-app-server:test
-      imagePullPolicy: Never
       env:
         - name: SPRING_ACTUATOR_PORT
           value: "8182"
@@ -121,7 +119,6 @@ spec:
 
     - name: client
       image: localhost/skeleton-app-client:test
-      imagePullPolicy: Never
       livenessProbe:
         httpGet:
           path: /
