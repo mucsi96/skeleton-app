@@ -25,7 +25,40 @@ jobs:
       - name: Install Playwright browsers
         working-directory: test
         run: npx playwright install chromium --with-deps
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build server image
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          load: true
+          tags: localhost/skeleton-app-server:test
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+      - name: Build client image
+        uses: docker/build-push-action@v6
+        with:
+          context: client
+          load: true
+          tags: localhost/skeleton-app-client:test
+          cache-from: type=gha,scope=client
+          cache-to: type=gha,mode=max,scope=client
+      - name: Build mock anthropic image
+        uses: docker/build-push-action@v6
+        with:
+          context: mock_anthropic_server
+          load: true
+          tags: localhost/skeleton-app-mock-anthropic:test
+          cache-from: type=gha,scope=mock-anthropic
+          cache-to: type=gha,mode=max,scope=mock-anthropic
+      - name: Load images into Podman
+        run: |
+          docker save localhost/skeleton-app-server:test | podman load
+          docker save localhost/skeleton-app-client:test | podman load
+          docker save localhost/skeleton-app-mock-anthropic:test | podman load
       - name: Setup test environment and start pod
+        env:
+          SKIP_BUILD: "1"
         run: scripts/pod_up.sh
       - name: Run Playwright tests
         working-directory: test
@@ -68,15 +101,26 @@ jobs:
           prefix: 'server'
           src: server
 
+      - name: Set up Docker Buildx
+        if: steps.get_next_version.outputs.hasNextVersion == 'true'
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to Docker Hub
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | podman login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin docker.io
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push server image
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
-        run: |
-          podman build -t docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }} server
-          podman push docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }}
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          push: true
+          tags: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }}
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
 
       - name: Create release
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
@@ -106,15 +150,26 @@ jobs:
           prefix: 'client'
           src: client
 
+      - name: Set up Docker Buildx
+        if: steps.get_next_version.outputs.hasNextVersion == 'true'
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to Docker Hub
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
-        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | podman login --username "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin docker.io
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push client image
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
-        run: |
-          podman build -t docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-client:${{ steps.get_next_version.outputs.version }} client
-          podman push docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-client:${{ steps.get_next_version.outputs.version }}
+        uses: docker/build-push-action@v6
+        with:
+          context: client
+          push: true
+          tags: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-client:${{ steps.get_next_version.outputs.version }}
+          cache-from: type=gha,scope=client
+          cache-to: type=gha,mode=max,scope=client
 
       - name: Create release
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
