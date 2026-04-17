@@ -47,15 +47,15 @@ spec:
     - name: mock-anthropic
       image: localhost/skeleton-app-mock-anthropic:test
       ports:
-        - containerPort: 3003
+        - containerPort: 3050
           hostPort: 3050
       env:
         - name: PORT
-          value: "3003"
+          value: "3050"
       livenessProbe:
         httpGet:
           path: /health
-          port: 3003
+          port: 3050
         initialDelaySeconds: 2
         periodSeconds: 2
         failureThreshold: 5
@@ -85,7 +85,7 @@ spec:
       livenessProbe:
         httpGet:
           path: /health
-          port: 8090
+          port: 8050
         initialDelaySeconds: 2
         periodSeconds: 2
         failureThreshold: 5
@@ -106,7 +106,7 @@ spec:
         - name: ANTHROPIC_API_KEY
           value: mock-anthropic-key
         - name: ANTHROPIC_BASE_URL
-          value: http://localhost:3003
+          value: http://localhost:3050
         - name: MOCK_OAUTH2_SERVER_URI
           value: http://localhost:8050
       livenessProbe:
