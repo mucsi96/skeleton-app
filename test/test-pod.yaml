@@ -8,9 +8,9 @@ spec:
       image: docker.io/library/traefik:v3.6
       ports:
         - containerPort: 80
-          hostPort: 8180
+          hostPort: 8150
         - containerPort: 8081
-          hostPort: 8181
+          hostPort: 8151
       volumeMounts:
         - name: traefik-config
           mountPath: /etc/traefik/traefik.yaml
@@ -29,7 +29,7 @@ spec:
       image: docker.io/library/postgres:17.5-bullseye
       ports:
         - containerPort: 5432
-          hostPort: 5460
+          hostPort: 5451
       env:
         - name: POSTGRES_DB
           value: test
@@ -48,7 +48,7 @@ spec:
       image: localhost/skeleton-app-mock-anthropic:test
       ports:
         - containerPort: 3003
-          hostPort: 3003
+          hostPort: 3050
       env:
         - name: PORT
           value: "3003"
@@ -64,7 +64,7 @@ spec:
       image: docker.io/mucsi96/mock-oidc-provider:latest
       ports:
         - containerPort: 8090
-          hostPort: 8090
+          hostPort: 8050
       env:
         - name: PORT
           value: "8090"
@@ -94,7 +94,7 @@ spec:
       image: localhost/skeleton-app-server:test
       env:
         - name: SPRING_ACTUATOR_PORT
-          value: "8182"
+          value: "8152"
         - name: SPRING_PROFILES_ACTIVE
           value: test
         - name: DB_URL
@@ -112,7 +112,7 @@ spec:
       livenessProbe:
         httpGet:
           path: /actuator/health/readiness
-          port: 8182
+          port: 8152
         initialDelaySeconds: 16
         periodSeconds: 2
         failureThreshold: 10

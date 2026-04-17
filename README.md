@@ -26,6 +26,20 @@ This repository publishes a diff of the last 2 weeks of changes to GitHub Pages.
 
 The pages build runs on every push to main, weekly on Monday, and on manual dispatch.
 
+## Port Mapping
+
+All host-exposed ports use the **xx50–xx59** range for their last two digits to avoid clashes with other local projects.
+
+| Host Port | Service              | Context          |
+|-----------|----------------------|------------------|
+| 3050      | Mock Anthropic API   | Test pod         |
+| 5450      | PostgreSQL           | Dev database     |
+| 5451      | PostgreSQL           | Test pod         |
+| 8050      | Mock OAuth2 provider | Test pod         |
+| 8150      | Traefik (web)        | Test pod         |
+| 8151      | Traefik (admin)      | Test pod         |
+| 8152      | Spring Actuator      | Local dev & test |
+
 ## Quick Start
 
 ```bash
