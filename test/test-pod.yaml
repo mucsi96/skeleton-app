@@ -63,11 +63,11 @@ spec:
     - name: mock-oauth2
       image: docker.io/mucsi96/mock-oidc-provider:latest
       ports:
-        - containerPort: 8090
+        - containerPort: 8050
           hostPort: 8050
       env:
         - name: PORT
-          value: "8090"
+          value: "8050"
         - name: ISSUER_ID
           value: default
         - name: SUB
@@ -108,7 +108,7 @@ spec:
         - name: ANTHROPIC_BASE_URL
           value: http://localhost:3003
         - name: MOCK_OAUTH2_SERVER_URI
-          value: http://localhost:8090
+          value: http://localhost:8050
       livenessProbe:
         httpGet:
           path: /actuator/health/readiness
