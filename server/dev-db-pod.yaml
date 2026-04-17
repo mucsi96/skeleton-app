@@ -8,7 +8,7 @@ spec:
       image: docker.io/library/postgres:17.5-bullseye
       ports:
         - containerPort: 5432
-          hostPort: 5433
+          hostPort: 5450
       env:
         - name: POSTGRES_DB
           value: skeleton

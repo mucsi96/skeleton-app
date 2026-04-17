@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5433/skeleton
+    url: jdbc:postgresql://localhost:5450/skeleton
     username: postgres
     password: postgres
 management:
   server:
-    port: 8182
+    port: 8152

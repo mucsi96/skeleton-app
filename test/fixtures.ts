@@ -10,7 +10,7 @@ export const test = base.extend({
 
     // Reset mock AI server
     try {
-      await fetch('http://localhost:3003/reset', {
+      await fetch('http://localhost:3050/reset', {
         method: 'POST',
         signal: AbortSignal.timeout(5000),
       });
