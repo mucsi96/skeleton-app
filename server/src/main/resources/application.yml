@@ -36,6 +36,7 @@ spring:
         options:
           model: claude-sonnet-4-6
 server:
+  forward-headers-strategy: framework
   servlet:
     context-path: /api
 management:
