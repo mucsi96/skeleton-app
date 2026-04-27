@@ -28,17 +28,17 @@ The pages build runs on every push to main, weekly on Monday, and on manual disp
 
 ## Port Mapping
 
-Host-exposed test pod ports use the **xx50–xx59** range for their last two digits to avoid clashes with other local projects. Local dev ports stay close to upstream defaults so they remain easy to recognise while still being distinct from the test pod.
+All host-exposed ports use the **xx50–xx59** range for their last two digits to avoid clashes with other local projects.
 
 | Port | Service              | Context                             |
 |------|----------------------|-------------------------------------|
 | 3050 | Mock Anthropic API   | Test pod                            |
-| 4280 | Angular dev server   | Local dev                           |
+| 4250 | Angular dev server   | Local dev                           |
 | 5450 | PostgreSQL           | Dev database                        |
 | 5451 | PostgreSQL           | Test pod                            |
 | 8050 | Mock OAuth2 provider | Test pod                            |
+| 8053 | Spring Boot server   | Local dev (VSCode)                  |
 | 8080 | Spring Boot server   | Test pod (internal, behind Traefik) |
-| 8081 | Spring Boot server   | Local dev (VSCode)                  |
 | 8150 | Traefik (web)        | Test pod                            |
 | 8151 | Traefik (admin)      | Test pod                            |
 | 8152 | Spring Actuator      | Local dev & test                    |
