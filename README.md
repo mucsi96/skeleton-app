@@ -38,7 +38,7 @@ All host-exposed ports use the **xx50–xx59** range for their last two digits t
 | 5451 | PostgreSQL           | Test pod                            |
 | 8050 | Mock OAuth2 provider | Test pod                            |
 | 8053 | Spring Boot server   | Local dev (VSCode)                  |
-| 8080 | Spring Boot server   | Test pod (internal, behind Traefik) |
+| 8054 | Spring Boot server   | Test pod (internal, behind Traefik) |
 | 8150 | Traefik (web)        | Test pod                            |
 | 8151 | Traefik (admin)      | Test pod                            |
 | 8152 | Spring Actuator      | Local dev & test                    |
