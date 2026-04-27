@@ -93,6 +93,8 @@ spec:
     - name: server
       image: localhost/skeleton-app-server:test
       env:
+        - name: SERVER_PORT
+          value: "8054"
         - name: SPRING_ACTUATOR_PORT
           value: "8152"
         - name: SPRING_PROFILES_ACTIVE

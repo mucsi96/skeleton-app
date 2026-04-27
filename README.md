@@ -30,15 +30,18 @@ The pages build runs on every push to main, weekly on Monday, and on manual disp
 
 All host-exposed ports use the **xx50–xx59** range for their last two digits to avoid clashes with other local projects.
 
-| Host Port | Service              | Context          |
-|-----------|----------------------|------------------|
-| 3050      | Mock Anthropic API   | Test pod         |
-| 5450      | PostgreSQL           | Dev database     |
-| 5451      | PostgreSQL           | Test pod         |
-| 8050      | Mock OAuth2 provider | Test pod         |
-| 8150      | Traefik (web)        | Test pod         |
-| 8151      | Traefik (admin)      | Test pod         |
-| 8152      | Spring Actuator      | Local dev & test |
+| Port | Service              | Context                             |
+|------|----------------------|-------------------------------------|
+| 3050 | Mock Anthropic API   | Test pod                            |
+| 4250 | Angular dev server   | Local dev                           |
+| 5450 | PostgreSQL           | Dev database                        |
+| 5451 | PostgreSQL           | Test pod                            |
+| 8050 | Mock OAuth2 provider | Test pod                            |
+| 8053 | Spring Boot server   | Local dev (VSCode)                  |
+| 8054 | Spring Boot server   | Test pod (internal, behind Traefik) |
+| 8150 | Traefik (web)        | Test pod                            |
+| 8151 | Traefik (admin)      | Test pod                            |
+| 8152 | Spring Actuator      | Local dev & test                    |
 
 ## Quick Start
 
