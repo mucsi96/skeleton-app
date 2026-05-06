@@ -1,4 +1,9 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import {
+  ApplicationConfig,
+  inject,
+  provideAppInitializer,
+  provideZoneChangeDetection,
+} from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import {
@@ -15,6 +20,7 @@ import { errorInterceptor } from './utils/error.interceptor';
 import { timezoneInterceptor } from './utils/timezone.interceptor';
 import { authInterceptor } from 'angular-auth-oidc-client';
 import { provideOidcAuth } from './auth.config';
+import { AuthRenewService } from './auth-renew.service';
 import {
   EnvironmentConfig,
   ENVIRONMENT_CONFIG,
@@ -35,6 +41,7 @@ export function getAppConfig(environment: EnvironmentConfig): ApplicationConfig 
       { provide: MAT_RIPPLE_GLOBAL_OPTIONS, useValue: globalRippleConfig },
       provideAnimationsAsync(),
       { provide: ENVIRONMENT_CONFIG, useValue: environment },
+      provideAppInitializer(() => inject(AuthRenewService).start()),
       provideOidcAuth(environment),
     ],
   };
