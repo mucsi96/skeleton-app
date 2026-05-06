@@ -198,14 +198,9 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Pull secrets from Key Vault
-        run: |
-          echo "K8S_CONFIG=$(az keyvault secret show --vault-name ${{ secrets.AZURE_KEYVAULT_NAME }} --name k8s-config --query value -o tsv)" >> $GITHUB_ENV
-          echo "HOSTNAME=$(az keyvault secret show --vault-name ${{ secrets.AZURE_KEYVAULT_NAME }} --name hostname --query value -o tsv)" >> $GITHUB_ENV
-          echo "API_CLIENT_ID=$(az keyvault secret show --vault-name ${{ secrets.AZURE_KEYVAULT_NAME }} --name api-client-id --query value -o tsv)" >> $GITHUB_ENV
-
       - name: Deploy to Kubernetes
         env:
+          AZURE_KEYVAULT_NAME: ${{ secrets.AZURE_KEYVAULT_NAME }}
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
           AZURE_KEYVAULT_ENDPOINT: ${{ secrets.AZURE_KEYVAULT_ENDPOINT }}
         run: scripts/deploy.sh
