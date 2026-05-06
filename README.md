@@ -22,7 +22,7 @@ Reference application for all future projects. Based on patterns from [learn-lan
 This repository publishes a diff of the last 2 weeks of changes to GitHub Pages. AI agents on other projects can fetch this diff to stay in sync with the latest patterns from skeleton-app.
 
 - **Commits**: `https://mucsi96.github.io/skeleton-app/commits.txt`
-- **Diff**: `https://mucsi96.github.io/skeleton-app/diff.patch`
+- **Diff**: `https://mucsi96.github.io/skeleton-app/diff.patch` (or `https://mucsi96.github.io/skeleton-app/diff.txt` to view inline in browser)
 
 The pages build runs on every push to main, weekly on Monday, and on manual dispatch.
 
