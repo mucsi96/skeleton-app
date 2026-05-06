@@ -5,7 +5,7 @@ set -e  # Exit immediately if a command exits with a non-zero status
 : "${AZURE_KEYVAULT_NAME:?Environment variable AZURE_KEYVAULT_NAME is required}"
 : "${DOCKERHUB_USERNAME:?Environment variable DOCKERHUB_USERNAME is required}"
 
-AZURE_KEYVAULT_ENDPOINT=$(az keyvault show --name "$AZURE_KEYVAULT_NAME" --query properties.vaultUri -o tsv)
+AZURE_KEYVAULT_ENDPOINT="https://${AZURE_KEYVAULT_NAME}.vault.azure.net/"
 K8S_CONFIG=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name k8s-config --query value -o tsv)
 HOSTNAME=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name hostname --query value -o tsv)
 API_CLIENT_ID=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name api-client-id --query value -o tsv)
