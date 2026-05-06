@@ -36,6 +36,8 @@ jobs:
             git diff $(git log --since="$since" --reverse --pretty=format:"%H" | head -1)..HEAD -- . ':!package-lock.json' ':!pom.xml' > _site/diff.patch 2>/dev/null || \
             echo "No changes in the last 2 weeks" > _site/diff.patch
 
+          cp _site/diff.patch _site/diff.txt
+
       - uses: actions/upload-pages-artifact@v3
 
   deploy:
