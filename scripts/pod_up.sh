@@ -16,10 +16,10 @@ else
 fi
 
 echo "Cleaning up existing pod..."
-podman kube down "$PROJECT_DIR/test/test-pod.yaml" 2>/dev/null || true
+podman play kube --down "$PROJECT_DIR/test/test-pod.yaml" 2>/dev/null || true
 
 echo "Starting pod..."
-podman kube play "$PROJECT_DIR/test/test-pod.yaml"
+podman play kube "$PROJECT_DIR/test/test-pod.yaml"
 
 echo "Waiting for all containers to become healthy..."
 CONTAINERS=$(podman pod inspect "$POD_NAME" --format '{{range .Containers}}{{.Name}} {{end}}')
