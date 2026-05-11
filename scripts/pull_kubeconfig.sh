@@ -2,8 +2,14 @@
 
 set -e # Exit immediately if a command exits with a non-zero status
 
-mkdir -p .kube
+AZURE_KEYVAULT_NAME="${AZURE_KEYVAULT_NAME:-p06-hello}"
+KUBECONFIG="${KUBECONFIG:-.kube/config}"
+export KUBECONFIG
 
-az keyvault secret show --vault-name p06-hello --name k8s-config --query value --output tsv > .kube/config
+mkdir -p "$(dirname "$KUBECONFIG")"
 
-chmod 0600 .kube/config
+az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name k8s-config --query value --output tsv > "$KUBECONFIG"
+
+chmod 0600 "$KUBECONFIG"
+
+kubectl config set-context --current --namespace=hello
