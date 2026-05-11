@@ -42,10 +42,10 @@ helm upgrade hello-server mucsi96/spring-app \
     --set clientId=$API_CLIENT_ID \
     --set serviceAccountName=hello-api-workload-identity \
     --set env.AZURE_KEYVAULT_ENDPOINT=$AZURE_KEYVAULT_ENDPOINT \
-    --set resources.requests.memory=1Gi \
-    --set resources.requests.cpu=1 \
-    --set resources.limits.memory=2Gi \
-    --set resources.limits.cpu=2 \
+    --set resources.requests.memory=512Mi \
+    --set resources.requests.cpu=100m \
+    --set resources.limits.memory=1Gi \
+    --set resources.limits.cpu=500m \
     --wait
 
 echo "Deploying client: $DOCKERHUB_USERNAME/skeleton-app-client:$clientLatestTag to $HOSTNAME using client-app chart $clientAppChartVersion"
