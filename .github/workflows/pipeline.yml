@@ -199,7 +199,7 @@ jobs:
 
       - uses: azure/use-kubelogin@v1
         with:
-          kubelogin-version: 'latest'
+          kubelogin-version: 'v0.2.7'
 
       - name: Deploy to Kubernetes
         env:
