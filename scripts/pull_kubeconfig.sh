@@ -11,4 +11,4 @@ az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name k8s-config --
 
 chmod 0600 "$KUBECONFIG"
 
-kubectl config set-context --current --namespace=hello
+kubectl config set-context --current --namespace=hello > /dev/null
