@@ -19,6 +19,8 @@ export KUBECONFIG="$KUBECONFIG_FILE"
 # Ensure the temporary file is deleted when the script exits
 trap 'rm -f "$KUBECONFIG_FILE"' EXIT
 
+kubectl config set-context --current --namespace=hello
+
 # Get latest tags for both server and client
 serverLatestTag=$(curl -s "https://registry.hub.docker.com/v2/repositories/$DOCKERHUB_USERNAME/skeleton-app-server/tags" | jq -r '.results | map(select(.name != "latest")) | sort_by(.last_updated) | reverse | .[0].name')
 clientLatestTag=$(curl -s "https://registry.hub.docker.com/v2/repositories/$DOCKERHUB_USERNAME/skeleton-app-client/tags" | jq -r '.results | map(select(.name != "latest")) | sort_by(.last_updated) | reverse | .[0].name')
