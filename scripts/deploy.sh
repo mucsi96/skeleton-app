@@ -34,7 +34,6 @@ echo "Deploying server: $DOCKERHUB_USERNAME/skeleton-app-server:$serverLatestTag
 helm upgrade hello-server mucsi96/spring-app \
     --install \
     --version $springAppChartVersion \
-    --namespace hello \
     --set image=$DOCKERHUB_USERNAME/skeleton-app-server:$serverLatestTag \
     --set entryPoint=web \
     --set host=$HOSTNAME \
@@ -53,7 +52,6 @@ echo "Deploying client: $DOCKERHUB_USERNAME/skeleton-app-client:$clientLatestTag
 helm upgrade hello-client mucsi96/client-app \
     --install \
     --version $clientAppChartVersion \
-    --namespace hello \
     --set image=$DOCKERHUB_USERNAME/skeleton-app-client:$clientLatestTag \
     --set host=$HOSTNAME \
     --set entryPoint=web \
