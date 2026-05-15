@@ -32,7 +32,7 @@ export class AuthService {
     this.snackBar.open('An error occurred. ' + message, 'Close', {
       duration: 3000,
       verticalPosition: 'top',
-      panelClass: ['error'],
+      panelClass: ['bt-snackbar-error'],
     });
   }
 }

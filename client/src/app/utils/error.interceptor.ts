@@ -10,7 +10,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       snackBar.open('An error occurred. ' + error.message, 'Close', {
         duration: 3000,
         verticalPosition: 'top',
-        panelClass: ['error'],
+        panelClass: ['bt-snackbar-error'],
       });
 
       return Promise.reject(error);

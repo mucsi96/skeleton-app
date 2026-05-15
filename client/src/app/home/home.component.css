@@ -6,22 +6,22 @@
 }
 
 h1 {
-  color: var(--mat-sys-on-surface);
+  color: var(--bt-text-strong);
   margin-bottom: 0.5rem;
 }
 
 p {
-  color: var(--mat-app-text-color);
+  color: var(--bt-text-muted);
   margin-bottom: 2rem;
 }
 
 mat-card {
-  background: var(--mat-sys-surface);
-  border: 1px solid var(--mat-sys-surface-container);
+  background: var(--bt-surface-1);
+  border: 1px solid var(--bt-outline);
 }
 
 .ai-greeting {
-  color: var(--mat-sys-on-surface);
+  color: var(--bt-text-default);
   font-size: 1.1rem;
   line-height: 1.6;
   margin: 0;
