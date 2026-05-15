@@ -1,13 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { BarLoaderComponent } from '@mucsi96/angular-material-theme';
 import { GreetingService } from '../greeting.service';
 
 @Component({
   selector: 'app-home',
   standalone: true,
   imports: [
-    MatProgressSpinnerModule,
+    BarLoaderComponent,
     MatCardModule,
   ],
   templateUrl: './home.component.html',
