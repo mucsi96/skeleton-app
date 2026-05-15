@@ -1,5 +1,5 @@
 .header {
-  border-bottom: 1px solid hsl(215, 14%, 34%);
+  border-bottom: 1px solid var(--bt-outline);
   display: block;
   padding: env(safe-area-inset-top) 0 0;
 
