@@ -3,8 +3,18 @@ spring:
     url: jdbc:postgresql://localhost:5450/skeleton
     username: postgres
     password: postgres
+app:
+  base-url: http://localhost:4250
+  allowed-emails:
+    - mucsi96@gmail.com
+  email:
+    provider: log
 server:
   port: 8053
+  servlet:
+    session:
+      cookie:
+        secure: false
 management:
   server:
     port: 8152

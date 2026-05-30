@@ -1,0 +1,9 @@
+@if (failed()) {
+<div class="verify-message">
+  <h1>Sign-in link invalid</h1>
+  <p>This link is invalid or has expired. Please request a new one.</p>
+  <a mat-flat-button routerLink="/login">Back to sign in</a>
+</div>
+} @else {
+<bt-bar-loader class="page-loading" label="Signing in" />
+}

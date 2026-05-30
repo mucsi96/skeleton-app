@@ -5,13 +5,19 @@ spring:
         secret:
           property-sources:
             - enabled: false
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8050/default
-          audiences: mock-api-client-id
   ai:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}
       base-url: ${ANTHROPIC_BASE_URL}
+app:
+  base-url: http://localhost:8150
+  allowed-emails:
+    - test-user@example.com
+  email:
+    provider: mock
+    mock-server-uri: ${MOCK_EMAIL_SERVER_URI}
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false

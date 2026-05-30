@@ -51,11 +51,20 @@ jobs:
           tags: localhost/skeleton-app-mock-anthropic:test
           cache-from: type=gha,scope=mock-anthropic
           cache-to: type=gha,mode=max,scope=mock-anthropic
+      - name: Build mock email image
+        uses: docker/build-push-action@v6
+        with:
+          context: mock_email_server
+          load: true
+          tags: localhost/skeleton-app-mock-email:test
+          cache-from: type=gha,scope=mock-email
+          cache-to: type=gha,mode=max,scope=mock-email
       - name: Load images into Podman
         run: |
           docker save localhost/skeleton-app-server:test | podman load
           docker save localhost/skeleton-app-client:test | podman load
           docker save localhost/skeleton-app-mock-anthropic:test | podman load
+          docker save localhost/skeleton-app-mock-email:test | podman load
       - name: Setup test environment and start pod
         env:
           SKIP_BUILD: "1"

@@ -8,10 +8,11 @@ Reference application for all future projects. Based on patterns from [learn-lan
 - **Deployment** - Docker multi-stage builds with Traefik reverse proxy
 - **Client** - Angular 21 with Material UI dark theme
 - **Server** - Spring Boot 4 with Java 21
-- **Authentication** - Azure AD (MSAL) with conditional mock auth for testing
+- **Authentication** - Passwordless email magic links with an email allowlist and HTTP session cookies
 - **Configuration** - Azure Key Vault + Spring profiles (prod/local/test)
 - **AI Integration** - Anthropic Claude via Spring AI
 - **AI Mocking** - Express mock server for testing
+- **Email Mocking** - Express mock email server for capturing magic links in tests
 - **Database** - PostgreSQL with Spring Data JPA
 - **Testing** - Playwright E2E tests
 - **UI Components** - Material UI with custom dark theme
@@ -33,10 +34,10 @@ All host-exposed ports use the **xx50–xx59** range for their last two digits t
 | Port | Service              | Context                             |
 |------|----------------------|-------------------------------------|
 | 3050 | Mock Anthropic API   | Test pod                            |
+| 3055 | Mock email server    | Test pod                            |
 | 4250 | Angular dev server   | Local dev                           |
 | 5450 | PostgreSQL           | Dev database                        |
 | 5451 | PostgreSQL           | Test pod                            |
-| 8050 | Mock OAuth2 provider | Test pod                            |
 | 8053 | Spring Boot server   | Local dev (VSCode)                  |
 | 8054 | Spring Boot server   | Test pod (internal, behind Traefik) |
 | 8150 | Traefik (web)        | Test pod                            |

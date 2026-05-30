@@ -1,0 +1,26 @@
+.login-card {
+  max-width: 28rem;
+  margin: 4rem auto 0;
+  background: var(--bt-surface-1);
+  border: 1px solid var(--bt-outline);
+}
+
+h1 {
+  color: var(--bt-text-strong);
+  margin-bottom: 0.5rem;
+}
+
+p {
+  color: var(--bt-text-muted);
+  margin-bottom: 1.5rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.email-field {
+  width: 100%;
+}

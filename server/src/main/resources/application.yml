@@ -23,22 +23,38 @@ spring:
           property-sources:
             - endpoint: ${AZURE_KEYVAULT_ENDPOINT}
               enabled: true
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: https://login.microsoftonline.com/${tenant-id:}/v2.0
-          audiences: ${api-client-id:}
+  mail:
+    host: ${mail-host:}
+    port: ${mail-port:587}
+    username: ${mail-username:}
+    password: ${mail-password:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   ai:
     anthropic:
       api-key: ${claude-api-key}
       chat:
         options:
           model: claude-sonnet-4-6
+app:
+  base-url: ${app-base-url}
+  allowed-emails: ${allowed-emails}
+  email:
+    provider: smtp
+    from: ${mail-from:no-reply@skeleton-app}
 server:
   forward-headers-strategy: framework
   servlet:
     context-path: /api
+    session:
+      cookie:
+        http-only: true
+        secure: true
+        same-site: lax
 management:
   server:
     port: ${SPRING_ACTUATOR_PORT}

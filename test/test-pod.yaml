@@ -60,34 +60,18 @@ spec:
         periodSeconds: 2
         failureThreshold: 5
 
-    - name: mock-oauth2
-      image: docker.io/mucsi96/mock-oidc-provider:latest
+    - name: mock-email
+      image: localhost/skeleton-app-mock-email:test
       ports:
-        - containerPort: 8050
-          hostPort: 8050
+        - containerPort: 3055
+          hostPort: 3055
       env:
         - name: PORT
-          value: "8050"
-        - name: ISSUER_ID
-          value: default
-        - name: SUB
-          value: test-user
-        - name: OID
-          value: 00000000-0000-0000-0000-000000000001
-        - name: NAME
-          value: Test User
-        - name: PREFERRED_USERNAME
-          value: test-user@example.com
-        - name: ROLES
-          value: GreetingReader
-        - name: SCP
-          value: readGreetings createGreeting
-        - name: AUD
-          value: mock-api-client-id
+          value: "3055"
       livenessProbe:
         httpGet:
           path: /health
-          port: 8050
+          port: 3055
         initialDelaySeconds: 2
         periodSeconds: 2
         failureThreshold: 5
@@ -111,8 +95,8 @@ spec:
           value: mock-anthropic-key
         - name: ANTHROPIC_BASE_URL
           value: http://localhost:3050
-        - name: MOCK_OAUTH2_SERVER_URI
-          value: http://localhost:8050
+        - name: MOCK_EMAIL_SERVER_URI
+          value: http://localhost:3055
       livenessProbe:
         httpGet:
           path: /actuator/health/readiness

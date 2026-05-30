@@ -35,3 +35,43 @@ databaseChangeLog:
               - column:
                   name: message
                   value: Welcome to the skeleton app!
+  - changeSet:
+      id: 3-create-auth-tokens-table
+      author: mucsi96
+      changes:
+        - createTable:
+            tableName: auth_tokens
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: token
+                  type: text
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: email
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false
+              - column:
+                  name: used
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamptz
+                  constraints:
+                    nullable: false

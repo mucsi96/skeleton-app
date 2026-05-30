@@ -1,7 +1,7 @@
 import { test as base, TestInfo } from '@playwright/test';
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { cleanupDbRecords, insertGreeting } from './utils';
+import { cleanupDbRecords, insertGreeting, resetMockEmailServer } from './utils';
 
 export const test = base.extend({
   page: async ({ page }, use, testInfo: TestInfo) => {
@@ -17,6 +17,9 @@ export const test = base.extend({
     } catch (error) {
       console.warn('Warning: Could not reset mock AI server:', error);
     }
+
+    // Reset mock email server
+    await resetMockEmailServer();
 
     // Capture browser console logs
     const consoleLogs: string[] = [];

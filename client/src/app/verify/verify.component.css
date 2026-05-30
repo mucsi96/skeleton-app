@@ -1,0 +1,21 @@
+.verify-message {
+  max-width: 28rem;
+  margin: 4rem auto 0;
+  text-align: center;
+}
+
+.verify-message h1 {
+  color: var(--bt-text-strong);
+  margin-bottom: 0.5rem;
+}
+
+.verify-message p {
+  color: var(--bt-text-muted);
+  margin-bottom: 1.5rem;
+}
+
+.page-loading {
+  display: flex;
+  justify-content: center;
+  margin: 150px auto;
+}

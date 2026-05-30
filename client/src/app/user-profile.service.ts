@@ -8,26 +8,26 @@ export class UserProfileService {
   private readonly authService = inject(AuthService);
 
   profile = computed(() => {
-    const userDataResult = this.authService.userData();
-    const userData = userDataResult?.userData;
-    const name = userData?.name ?? userData?.preferred_username;
+    const user = this.authService.user();
 
-    if (!name) {
+    if (!user) {
       return undefined;
     }
 
     return {
-      name,
-      initials: this.getInitials(name),
+      name: user.email,
+      initials: this.getInitials(user.email),
     };
   });
 
-  private getInitials(name: string | undefined): string {
-    if (!name) return '';
-    const initials = name
-      .split(' ')
-      .map((n) => n[0])
-      .join('');
-    return initials.toUpperCase();
+  private getInitials(email: string): string {
+    const localPart = email.split('@')[0];
+    return localPart
+      .split(/[.\-_+]/)
+      .filter((part) => part.length > 0)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase();
   }
 }

@@ -1,34 +1,48 @@
-import { computed, inject, Injectable } from '@angular/core';
-import { NotificationsService } from '@mucsi96/angular-material-theme';
-import { OidcSecurityService } from 'angular-auth-oidc-client';
+import { HttpClient } from '@angular/common/http';
+import { computed, inject, Injectable, signal } from '@angular/core';
+import { fetchJson } from './utils/fetchJson';
+
+export interface User {
+  email: string;
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly notifications = inject(NotificationsService);
-  private readonly oidcSecurityService = inject(OidcSecurityService);
+  private readonly http = inject(HttpClient);
 
-  readonly isAuthenticated = computed(
-    () => this.oidcSecurityService.authenticated().isAuthenticated
-  );
+  private readonly currentUser = signal<User | undefined>(undefined);
 
-  readonly userData = this.oidcSecurityService.userData;
+  readonly user = this.currentUser.asReadonly();
+  readonly isAuthenticated = computed(() => this.currentUser() !== undefined);
 
-  login(): void {
-    this.oidcSecurityService.authorize();
+  async loadUser(): Promise<void> {
+    try {
+      const user = await fetchJson<User>(this.http, '/api/auth/me');
+      this.currentUser.set(user);
+    } catch {
+      this.currentUser.set(undefined);
+    }
   }
 
-  logout(): void {
-    this.oidcSecurityService
-      .logoff()
-      .subscribe({
-        error: (err) => this.showError(err),
-      });
+  async requestLink(email: string): Promise<void> {
+    await fetchJson(this.http, '/api/auth/request-link', {
+      method: 'post',
+      body: { email },
+    });
   }
 
-  private showError(error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    this.notifications.error('An error occurred. ' + message);
+  async verify(token: string): Promise<void> {
+    const user = await fetchJson<User>(this.http, '/api/auth/verify', {
+      method: 'post',
+      body: { token },
+    });
+    this.currentUser.set(user);
+  }
+
+  async logout(): Promise<void> {
+    await fetchJson(this.http, '/api/auth/logout', { method: 'post' });
+    this.currentUser.set(undefined);
   }
 }

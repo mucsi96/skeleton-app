@@ -99,5 +99,8 @@ cd client && npm install && cd ..
 echo "Installing mock Anthropic server dependencies..."
 cd mock_anthropic_server && npm install && cd ..
 
+echo "Installing mock email server dependencies..."
+cd mock_email_server && npm install && cd ..
+
 echo "Installing test dependencies..."
 cd test && npm install && npx playwright install --with-deps chromium && cd ..

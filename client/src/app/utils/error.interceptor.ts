@@ -7,7 +7,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notifications = inject(NotificationsService);
   return next(req).pipe(
     catchError((error) => {
-      notifications.error('An error occurred. ' + error.message);
+      // Auth endpoints surface their own messaging (login form, verify page,
+      // unauthenticated session checks), so skip the global notification here.
+      if (!req.url.startsWith('/api/auth/')) {
+        notifications.error('An error occurred. ' + error.message);
+      }
       return Promise.reject(error);
     })
   );

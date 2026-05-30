@@ -12,6 +12,7 @@ else
   podman build -t localhost/skeleton-app-server:test "$PROJECT_DIR/server" &
   podman build -t localhost/skeleton-app-client:test "$PROJECT_DIR/client" &
   podman build -t localhost/skeleton-app-mock-anthropic:test "$PROJECT_DIR/mock_anthropic_server" &
+  podman build -t localhost/skeleton-app-mock-email:test "$PROJECT_DIR/mock_email_server" &
   wait
 fi
 
