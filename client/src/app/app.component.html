@@ -1,6 +1,6 @@
 <mat-toolbar class="header">
   <nav>
-    <a mat-button routerLink="">Skeleton App</a>
+    <a mat-button routerLink="" (click)="reloadGreeting()">Skeleton App</a>
     @if(isAuthenticated()) {
     <div class="header-right">
       <app-header></app-header>

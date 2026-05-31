@@ -5,6 +5,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './header/header.component';
 import { AuthService } from './auth.service';
+import { GreetingService } from './greeting.service';
 
 @Component({
   selector: 'app-root',
@@ -20,5 +21,10 @@ import { AuthService } from './auth.service';
   styleUrl: './app.component.css',
 })
 export class AppComponent {
+  private readonly greetingService = inject(GreetingService);
   isAuthenticated = inject(AuthService).isAuthenticated;
+
+  reloadGreeting() {
+    this.greetingService.greeting.reload();
+  }
 }
