@@ -1,4 +1,9 @@
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import {
+  ApplicationConfig,
+  inject,
+  provideAppInitializer,
+  provideZoneChangeDetection,
+} from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import {
@@ -13,7 +18,9 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { provideAngularMaterialTheme } from '@mucsi96/angular-material-theme';
 import { routes } from './app.routes';
 import { errorInterceptor } from './utils/error.interceptor';
+import { authRetryInterceptor } from './utils/auth-retry.interceptor';
 import { timezoneInterceptor } from './utils/timezone.interceptor';
+import { TokenRenewalService } from './utils/token-renewal.service';
 import { authInterceptor } from 'angular-auth-oidc-client';
 import { provideOidcAuth } from './auth.config';
 import {
@@ -31,13 +38,19 @@ export function getAppConfig(environment: EnvironmentConfig): ApplicationConfig 
       provideZoneChangeDetection({ eventCoalescing: true }),
       provideRouter(routes),
       provideHttpClient(
-        withInterceptors([authInterceptor(), timezoneInterceptor, errorInterceptor])
+        withInterceptors([
+          errorInterceptor,
+          authRetryInterceptor,
+          authInterceptor(),
+          timezoneInterceptor,
+        ])
       ),
       { provide: MAT_RIPPLE_GLOBAL_OPTIONS, useValue: globalRippleConfig },
       provideAnimationsAsync(),
       provideAngularMaterialTheme(),
       { provide: ENVIRONMENT_CONFIG, useValue: environment },
       provideOidcAuth(environment),
+      provideAppInitializer(() => inject(TokenRenewalService).init()),
     ],
   };
 }
