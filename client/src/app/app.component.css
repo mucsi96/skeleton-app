@@ -1,6 +1,10 @@
 .header {
   border-bottom: 1px solid var(--bt-outline);
   display: block;
+  /* Let the toolbar grow by the status-bar inset instead of letting the
+     padding eat into Material's fixed toolbar height (which crushes the
+     content under the iOS status bar in standalone PWA mode). */
+  height: auto;
   padding: env(safe-area-inset-top) 0 0;
 
   nav {
@@ -10,7 +14,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    height: 100%;
+    min-height: var(--mat-toolbar-standard-height, 64px);
 
     a[mat-button] {
       font-size: 16px;

@@ -1,7 +1,7 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
-import { fromEvent, merge, throttleTime } from 'rxjs';
+import { catchError, EMPTY, fromEvent, merge, throttleTime } from 'rxjs';
 
 /**
  * Keeps the access token fresh on mobile.
@@ -45,7 +45,10 @@ export class TokenRenewalService {
         if (isAuthenticated) {
           this.oidcSecurityService
             .forceRefreshSession()
-            .pipe(takeUntilDestroyed(this.destroyRef))
+            .pipe(
+              catchError(() => EMPTY),
+              takeUntilDestroyed(this.destroyRef)
+            )
             .subscribe();
         }
       });
