@@ -1,14 +1,3 @@
-<div class="page-toolbar">
-  <button
-    mat-icon-button
-    aria-label="Refresh greeting"
-    (click)="greeting.reload()"
-    [disabled]="greeting.isLoading()"
-  >
-    <mat-icon>refresh</mat-icon>
-  </button>
-</div>
-
 @if (greeting.isLoading()) {
 <bt-bar-loader class="page-loading" label="Loading greeting" />
 } @else {
