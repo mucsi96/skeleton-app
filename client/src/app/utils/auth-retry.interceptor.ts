@@ -30,14 +30,14 @@ export const authRetryInterceptor: HttpInterceptorFn = (req, next) => {
 
       console.warn(
         '[auth] API request returned 401 - refreshing token via refresh token and retrying',
-        { url: req.url }
+        JSON.stringify({ url: req.url })
       );
 
       return oidcSecurityService.forceRefreshSession().pipe(
         tap(() =>
           console.info(
             '[auth] Token refreshed after 401 - retrying original request',
-            { url: req.url }
+            JSON.stringify({ url: req.url })
           )
         ),
         switchMap(() => next(req))
