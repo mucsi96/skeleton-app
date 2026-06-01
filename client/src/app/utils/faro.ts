@@ -11,5 +11,11 @@ export function initFaro(clientLogUrl: string): void {
       name: 'skeleton-app',
       version: '1.0.0',
     },
+    // Faro filters out console.log/debug/trace by default; capture every level
+    // so the auth/token-renewal traces and any third-party console output land
+    // in the backend logs.
+    consoleInstrumentation: {
+      disabledLevels: [],
+    },
   });
 }
