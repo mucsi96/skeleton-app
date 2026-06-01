@@ -5,7 +5,7 @@ import { EnvironmentConfig } from './app/environment/environment.config';
 import { initFaro } from './app/utils/faro';
 
 loadEnvironmentConfig().then(environment => {
-  initFaro(environment.clientLogUrl);
+  initFaro(environment.clientLogUrl, environment.clientAppName);
   bootstrapApplication(AppComponent, getAppConfig(environment))
     .catch((err) => console.error(err));
 });

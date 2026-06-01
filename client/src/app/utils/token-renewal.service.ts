@@ -52,7 +52,7 @@ export class TokenRenewalService {
           `[auth] App returned to foreground - refresh token ${
             hasRefreshToken ? 'still present in storage' : 'gone from storage'
           }`,
-          {
+          JSON.stringify({
             isAuthenticated,
             hasRefreshToken,
             hasAccessToken,
@@ -60,7 +60,7 @@ export class TokenRenewalService {
             // If iOS evicted the storage the whole OIDC entry disappears, not
             // just the refresh token - the surviving key names reveal which.
             storage: snapshotStorageKeys(),
-          }
+          })
         );
 
         if (!hasRefreshToken) {
@@ -82,9 +82,9 @@ export class TokenRenewalService {
             catchError((error: unknown) => {
               console.error(
                 '[auth] Proactive foreground token refresh failed',
-                {
+                JSON.stringify({
                   error: error instanceof Error ? error.message : String(error),
-                }
+                })
               );
               return EMPTY;
             }),

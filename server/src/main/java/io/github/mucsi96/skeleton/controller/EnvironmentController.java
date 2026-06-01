@@ -25,6 +25,9 @@ public class EnvironmentController {
   @Value("${client-log-url:}")
   private String clientLogUrl;
 
+  @Value("${client-app-name:}")
+  private String clientAppName;
+
   @GetMapping("/environment")
   public ConfigResponse getConfig() {
     return new ConfigResponse(
@@ -32,7 +35,8 @@ public class EnvironmentController {
         uiClientId,
         clientId,
         mockOAuth2ServerUri,
-        clientLogUrl);
+        clientLogUrl,
+        clientAppName);
   }
 
   public record ConfigResponse(
@@ -40,6 +44,7 @@ public class EnvironmentController {
       String clientId,
       String apiClientId,
       String mockOAuth2ServerUri,
-      String clientLogUrl) {
+      String clientLogUrl,
+      String clientAppName) {
   }
 }
