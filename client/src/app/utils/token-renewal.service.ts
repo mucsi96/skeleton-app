@@ -1,7 +1,7 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
-import { catchError, EMPTY, fromEvent, merge, tap, throttleTime } from 'rxjs';
+import { catchError, EMPTY, forkJoin, fromEvent, merge, tap, throttleTime } from 'rxjs';
 import { LoggerService } from './logger.service';
 
 /**
@@ -40,41 +40,95 @@ export class TokenRenewalService {
       return;
     }
 
-    this.oidcSecurityService
-      .isAuthenticated()
+    forkJoin({
+      isAuthenticated: this.oidcSecurityService.isAuthenticated(),
+      refreshToken: this.oidcSecurityService.getRefreshToken(),
+      accessToken: this.oidcSecurityService.getAccessToken(),
+    })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((isAuthenticated) => {
-        if (isAuthenticated) {
+      .subscribe(({ isAuthenticated, refreshToken, accessToken }) => {
+        const hasRefreshToken = !!refreshToken;
+        const hasAccessToken = !!accessToken;
+
+        this.logger.log(
+          'info',
+          'auth',
+          `App returned to foreground - refresh token ${
+            hasRefreshToken ? 'still present in storage' : 'gone from storage'
+          }`,
+          {
+            isAuthenticated,
+            hasRefreshToken,
+            hasAccessToken,
+            refreshTokenLength: refreshToken?.length ?? 0,
+            // If iOS evicted the storage the whole OIDC entry disappears, not
+            // just the refresh token - the surviving key names reveal which.
+            storage: snapshotStorageKeys(),
+          }
+        );
+
+        if (!hasRefreshToken) {
           this.logger.log(
-            'info',
+            'warn',
             'auth',
-            'App returned to foreground - proactively refreshing access token via refresh token'
+            'No refresh token in storage on foreground - silent renewal impossible, full re-authentication will be required'
           );
-          this.oidcSecurityService
-            .forceRefreshSession()
-            .pipe(
-              tap(() =>
-                this.logger.log(
-                  'info',
-                  'auth',
-                  'Proactive foreground token refresh completed'
-                )
-              ),
-              catchError((error: unknown) => {
-                this.logger.log(
-                  'error',
-                  'auth',
-                  'Proactive foreground token refresh failed',
-                  {
-                    error: error instanceof Error ? error.message : String(error),
-                  }
-                );
-                return EMPTY;
-              }),
-              takeUntilDestroyed(this.destroyRef)
-            )
-            .subscribe();
+          return;
         }
+
+        this.logger.log(
+          'info',
+          'auth',
+          'Proactively refreshing access token using stored refresh token'
+        );
+        this.oidcSecurityService
+          .forceRefreshSession()
+          .pipe(
+            tap(() =>
+              this.logger.log(
+                'info',
+                'auth',
+                'Proactive foreground token refresh completed'
+              )
+            ),
+            catchError((error: unknown) => {
+              this.logger.log(
+                'error',
+                'auth',
+                'Proactive foreground token refresh failed',
+                {
+                  error: error instanceof Error ? error.message : String(error),
+                }
+              );
+              return EMPTY;
+            }),
+            takeUntilDestroyed(this.destroyRef)
+          )
+          .subscribe();
       });
   }
+}
+
+/**
+ * Snapshots which keys currently live in local/session storage (names only,
+ * never values). When iOS reclaims storage for a backgrounded PWA the OIDC
+ * entry vanishes entirely, so a shrinking/empty key list across foreground
+ * events is the fingerprint of eviction rather than a normal token expiry.
+ */
+function snapshotStorageKeys(): {
+  localStorageKeys: string[];
+  sessionStorageKeys: string[];
+} {
+  const keysOf = (store: Storage): string[] => {
+    try {
+      return Object.keys(store);
+    } catch {
+      return ['<unavailable>'];
+    }
+  };
+
+  return {
+    localStorageKeys: keysOf(localStorage),
+    sessionStorageKeys: keysOf(sessionStorage),
+  };
 }
