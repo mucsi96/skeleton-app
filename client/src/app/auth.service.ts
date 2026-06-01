@@ -1,7 +1,6 @@
 import { computed, inject, Injectable } from '@angular/core';
 import { NotificationsService } from '@mucsi96/angular-material-theme';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
-import { LoggerService } from './utils/logger.service';
 
 @Injectable({
   providedIn: 'root',
@@ -9,7 +8,6 @@ import { LoggerService } from './utils/logger.service';
 export class AuthService {
   private readonly notifications = inject(NotificationsService);
   private readonly oidcSecurityService = inject(OidcSecurityService);
-  private readonly logger = inject(LoggerService);
 
   readonly isAuthenticated = computed(
     () => this.oidcSecurityService.authenticated().isAuthenticated
@@ -18,16 +16,12 @@ export class AuthService {
   readonly userData = this.oidcSecurityService.userData;
 
   login(): void {
-    this.logger.log(
-      'info',
-      'auth',
-      'Full re-authentication started (redirect to authority)'
-    );
+    console.info('[auth] Full re-authentication started (redirect to authority)');
     this.oidcSecurityService.authorize();
   }
 
   logout(): void {
-    this.logger.log('info', 'auth', 'Logout started');
+    console.info('[auth] Logout started');
     this.oidcSecurityService
       .logoff()
       .subscribe({

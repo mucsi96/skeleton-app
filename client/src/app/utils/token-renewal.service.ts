@@ -2,7 +2,6 @@ import { DestroyRef, inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
 import { catchError, EMPTY, forkJoin, fromEvent, merge, tap, throttleTime } from 'rxjs';
-import { LoggerService } from './logger.service';
 
 /**
  * Keeps the access token fresh on mobile.
@@ -20,7 +19,6 @@ import { LoggerService } from './logger.service';
 export class TokenRenewalService {
   private readonly oidcSecurityService = inject(OidcSecurityService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly logger = inject(LoggerService);
 
   init(): void {
     const visible$ = fromEvent(document, 'visibilitychange');
@@ -50,10 +48,8 @@ export class TokenRenewalService {
         const hasRefreshToken = !!refreshToken;
         const hasAccessToken = !!accessToken;
 
-        this.logger.log(
-          'info',
-          'auth',
-          `App returned to foreground - refresh token ${
+        console.info(
+          `[auth] App returned to foreground - refresh token ${
             hasRefreshToken ? 'still present in storage' : 'gone from storage'
           }`,
           {
@@ -68,34 +64,24 @@ export class TokenRenewalService {
         );
 
         if (!hasRefreshToken) {
-          this.logger.log(
-            'warn',
-            'auth',
-            'No refresh token in storage on foreground - silent renewal impossible, full re-authentication will be required'
+          console.warn(
+            '[auth] No refresh token in storage on foreground - silent renewal impossible, full re-authentication will be required'
           );
           return;
         }
 
-        this.logger.log(
-          'info',
-          'auth',
-          'Proactively refreshing access token using stored refresh token'
+        console.info(
+          '[auth] Proactively refreshing access token using stored refresh token'
         );
         this.oidcSecurityService
           .forceRefreshSession()
           .pipe(
             tap(() =>
-              this.logger.log(
-                'info',
-                'auth',
-                'Proactive foreground token refresh completed'
-              )
+              console.info('[auth] Proactive foreground token refresh completed')
             ),
             catchError((error: unknown) => {
-              this.logger.log(
-                'error',
-                'auth',
-                'Proactive foreground token refresh failed',
+              console.error(
+                '[auth] Proactive foreground token refresh failed',
                 {
                   error: error instanceof Error ? error.message : String(error),
                 }

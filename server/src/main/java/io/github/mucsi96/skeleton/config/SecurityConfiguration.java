@@ -29,7 +29,6 @@ public class SecurityConfiguration {
 
         http.authorizeHttpRequests(requests -> requests
                 .requestMatchers("/environment").permitAll()
-                .requestMatchers("/logs").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .anyRequest().authenticated());
 

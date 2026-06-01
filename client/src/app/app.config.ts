@@ -21,8 +21,6 @@ import { errorInterceptor } from './utils/error.interceptor';
 import { authRetryInterceptor } from './utils/auth-retry.interceptor';
 import { timezoneInterceptor } from './utils/timezone.interceptor';
 import { TokenRenewalService } from './utils/token-renewal.service';
-import { LoggerService } from './utils/logger.service';
-import { AuthLoggingService } from './utils/auth-logging.service';
 import { authInterceptor } from 'angular-auth-oidc-client';
 import { provideOidcAuth } from './auth.config';
 import {
@@ -51,10 +49,6 @@ export function getAppConfig(environment: EnvironmentConfig): ApplicationConfig 
       provideAnimationsAsync(),
       provideAngularMaterialTheme(),
       { provide: ENVIRONMENT_CONFIG, useValue: environment },
-      provideAppInitializer(() =>
-        inject(LoggerService).initBrowserErrorCapture()
-      ),
-      provideAppInitializer(() => inject(AuthLoggingService).init()),
       provideOidcAuth(environment),
       provideAppInitializer(() => inject(TokenRenewalService).init()),
     ],
