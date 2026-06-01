@@ -65,7 +65,7 @@ export class TokenRenewalService {
 
         if (!hasRefreshToken) {
           console.warn(
-            '[auth] No refresh token in storage on foreground - silent renewal impossible, full re-authentication will be required'
+            '[auth] App returned to foreground but no refresh token present anymore in storage - silent renewal impossible, full re-authentication will be required'
           );
           return;
         }
