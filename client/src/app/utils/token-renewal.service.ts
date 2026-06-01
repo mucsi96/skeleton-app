@@ -1,7 +1,8 @@
 import { DestroyRef, inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
-import { catchError, EMPTY, fromEvent, merge, throttleTime } from 'rxjs';
+import { catchError, EMPTY, fromEvent, merge, tap, throttleTime } from 'rxjs';
+import { LoggerService } from './logger.service';
 
 /**
  * Keeps the access token fresh on mobile.
@@ -19,6 +20,7 @@ import { catchError, EMPTY, fromEvent, merge, throttleTime } from 'rxjs';
 export class TokenRenewalService {
   private readonly oidcSecurityService = inject(OidcSecurityService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly logger = inject(LoggerService);
 
   init(): void {
     const visible$ = fromEvent(document, 'visibilitychange');
@@ -43,10 +45,32 @@ export class TokenRenewalService {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((isAuthenticated) => {
         if (isAuthenticated) {
+          this.logger.log(
+            'info',
+            'auth',
+            'App returned to foreground - proactively refreshing access token via refresh token'
+          );
           this.oidcSecurityService
             .forceRefreshSession()
             .pipe(
-              catchError(() => EMPTY),
+              tap(() =>
+                this.logger.log(
+                  'info',
+                  'auth',
+                  'Proactive foreground token refresh completed'
+                )
+              ),
+              catchError((error: unknown) => {
+                this.logger.log(
+                  'error',
+                  'auth',
+                  'Proactive foreground token refresh failed',
+                  {
+                    error: error instanceof Error ? error.message : String(error),
+                  }
+                );
+                return EMPTY;
+              }),
               takeUntilDestroyed(this.destroyRef)
             )
             .subscribe();
