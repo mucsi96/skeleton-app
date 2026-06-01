@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.mucsi96.skeleton.model.ClientLogRequest;
+import jakarta.validation.Valid;
 
 /**
  * Unprotected sink for client-side logs.
@@ -18,6 +19,12 @@ import io.github.mucsi96.skeleton.model.ClientLogRequest;
  * followed in the backend logs. It is intentionally public - it must keep
  * working even when the user is unauthenticated or the token has expired, which
  * is exactly when auth-related logs are most valuable.
+ *
+ * Because it is public, the body is bean-validated (rejecting malformed or
+ * oversized payloads before they reach {@link #format}) and every interpolated
+ * value is stripped of control characters so a caller cannot forge extra log
+ * lines via embedded newlines. Body-size and rate limits are enforced upstream
+ * by {@code ClientLogProtectionFilter}.
  */
 @RestController
 public class LogController {
@@ -26,7 +33,7 @@ public class LogController {
 
   @PostMapping("/logs")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void log(@RequestBody ClientLogRequest request) {
+  public void log(@Valid @RequestBody ClientLogRequest request) {
     final String message = format(request);
 
     switch (request.level()) {
@@ -41,10 +48,19 @@ public class LogController {
     final String details = request.details() == null || request.details().isEmpty()
         ? ""
         : " " + request.details();
-    return "[%s] [%s] %s%s".formatted(
+    final String line = "[%s] [%s] %s%s".formatted(
         request.timestamp(),
         request.context(),
         request.message(),
         details);
+    return sanitize(line);
+  }
+
+  /**
+   * Replaces control characters (including CR/LF/TAB) so client-supplied values
+   * cannot inject forged log entries.
+   */
+  private static String sanitize(String value) {
+    return value.replaceAll("\\p{Cntrl}", " ");
   }
 }
