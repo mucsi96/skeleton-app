@@ -1,7 +1,8 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
-import { catchError, switchMap, throwError } from 'rxjs';
+import { catchError, switchMap, tap, throwError } from 'rxjs';
+import { LoggerService } from './logger.service';
 
 const isApiRequest = (url: string): boolean => /\/api(\/|$)/.test(url);
 
@@ -19,6 +20,7 @@ const isApiRequest = (url: string): boolean => /\/api(\/|$)/.test(url);
  */
 export const authRetryInterceptor: HttpInterceptorFn = (req, next) => {
   const oidcSecurityService = inject(OidcSecurityService);
+  const logger = inject(LoggerService);
 
   return next(req).pipe(
     catchError((error: unknown) => {
@@ -28,9 +30,24 @@ export const authRetryInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => error);
       }
 
-      return oidcSecurityService
-        .forceRefreshSession()
-        .pipe(switchMap(() => next(req)));
+      logger.log(
+        'warn',
+        'auth',
+        'API request returned 401 - refreshing token via refresh token and retrying',
+        { url: req.url }
+      );
+
+      return oidcSecurityService.forceRefreshSession().pipe(
+        tap(() =>
+          logger.log(
+            'info',
+            'auth',
+            'Token refreshed after 401 - retrying original request',
+            { url: req.url }
+          )
+        ),
+        switchMap(() => next(req))
+      );
     })
   );
 };

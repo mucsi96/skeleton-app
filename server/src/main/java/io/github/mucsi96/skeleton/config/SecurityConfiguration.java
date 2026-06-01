@@ -22,11 +22,14 @@ public class SecurityConfiguration {
     SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
 
+        http.csrf(csrf -> csrf.disable());
+
         http.oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 
         http.authorizeHttpRequests(requests -> requests
                 .requestMatchers("/environment").permitAll()
+                .requestMatchers("/logs").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .anyRequest().authenticated());
 
