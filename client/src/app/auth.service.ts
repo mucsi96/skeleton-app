@@ -201,6 +201,7 @@ export class AuthService {
               ? 'standalone'
               : 'browser',
             storage: snapshotStorageKeys(),
+            oidcStorage: inspectOidcStorage(),
           })
         );
 
@@ -269,9 +270,13 @@ export class AuthService {
             hasRefreshToken,
             hasAccessToken,
             refreshTokenLength: refreshToken?.length ?? 0,
-            // If iOS evicted the storage the whole OIDC entry disappears, not
-            // just the refresh token - the surviving key names reveal which.
+            // Two failure modes collapse to "no refresh token" here, so we
+            // capture both the surviving key names and the OIDC blob's
+            // internals to tell them apart: iOS eviction drops the whole blob
+            // key, whereas a library-side session reset keeps the key but
+            // empties authnResult. See inspectOidcStorage below.
             storage: snapshotStorageKeys(),
+            oidcStorage: inspectOidcStorage(),
           })
         );
 
@@ -319,9 +324,11 @@ export class AuthService {
 
 /**
  * Snapshots which keys currently live in local/session storage (names only,
- * never values). When iOS reclaims storage for a backgrounded PWA the OIDC
- * entry vanishes entirely, so a shrinking/empty key list across foreground
- * events is the fingerprint of eviction rather than a normal token expiry.
+ * never values). The presence of the OIDC blob key here is the first
+ * discriminator between the two ways a session goes missing: if iOS reclaims
+ * storage for a backgrounded PWA the blob key is absent entirely, whereas a
+ * library-side reset leaves the key in place (with an emptied payload, which
+ * inspectOidcStorage drills into).
  */
 function snapshotStorageKeys(): {
   localStorageKeys: string[];
@@ -337,5 +344,122 @@ function snapshotStorageKeys(): {
   return {
     localStorageKeys: keysOf(localStorage),
     sessionStorageKeys: keysOf(sessionStorage),
+  };
+}
+
+/**
+ * Top-level slots angular-auth-oidc-client keeps inside its single storage
+ * blob. The blob is one localStorage entry named `<configId>-<clientId>`
+ * (e.g. "0-<clientId>") whose value is a JSON object keyed by these slots.
+ * authnResult is the one that actually holds the access/refresh/id tokens.
+ */
+const OIDC_STORAGE_SLOTS = [
+  'authnResult',
+  'authzData',
+  'access_token_expires_at',
+  'authWellKnownEndPoints',
+  'userData',
+  'authNonce',
+  'codeVerifier',
+  'session_state',
+  'jwtKeys',
+] as const;
+
+/**
+ * Proves *why* a refresh token is missing by inspecting the OIDC storage blob
+ * itself - structure only, never the secret values.
+ *
+ * angular-auth-oidc-client persists the whole session as a single
+ * localStorage entry (`<configId>-<clientId>`) whose value is a JSON object;
+ * the tokens live under its `authnResult` slot. A bare "no refresh token in
+ * storage" reading cannot tell these two root causes apart, but the blob's
+ * shape can:
+ *
+ *  - iOS reclaimed the PWA's storage  -> `blobPresent` is false (the entry,
+ *    and usually every other localStorage key, is gone).
+ *  - the library reset the session via resetAuthDataInStore() on a failed
+ *    refresh/validation or logoff -> `blobPresent` stays true while
+ *    `authnResult.present` flips to false (or its token lengths drop to 0)
+ *    and sibling slots such as authWellKnownEndPoints survive.
+ *
+ * Reports the blob key, byte length, top-level slot names, and the
+ * authnResult field names plus token string lengths - enough to fingerprint
+ * the failure without ever emitting a token.
+ */
+function inspectOidcStorage(): {
+  blobPresent: boolean;
+  blobKey: string | null;
+  blobByteLength: number;
+  topLevelKeys: string[];
+  authnResult: {
+    present: boolean;
+    fieldNames: string[];
+    accessTokenLength: number;
+    refreshTokenLength: number;
+    idTokenLength: number;
+  };
+} {
+  let blobKey: string | null = null;
+  let blobRaw = '';
+  let parsed: Record<string, unknown> | null = null;
+
+  try {
+    for (const key of Object.keys(localStorage)) {
+      const raw = localStorage.getItem(key);
+      if (!raw) {
+        continue;
+      }
+      let candidate: unknown;
+      try {
+        candidate = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+      if (
+        candidate &&
+        typeof candidate === 'object' &&
+        OIDC_STORAGE_SLOTS.some((slot) => slot in (candidate as object))
+      ) {
+        blobKey = key;
+        blobRaw = raw;
+        parsed = candidate as Record<string, unknown>;
+        break;
+      }
+    }
+  } catch {
+    // localStorage can throw entirely under locked-down iOS privacy modes.
+  }
+
+  // authnResult is normally a nested object, but defend against the library
+  // storing it as a JSON string in some versions.
+  const rawAuthnResult = parsed?.['authnResult'];
+  let authnResult: Record<string, unknown> | null = null;
+  if (rawAuthnResult && typeof rawAuthnResult === 'object') {
+    authnResult = rawAuthnResult as Record<string, unknown>;
+  } else if (typeof rawAuthnResult === 'string') {
+    try {
+      authnResult = JSON.parse(rawAuthnResult) as Record<string, unknown>;
+    } catch {
+      authnResult = null;
+    }
+  }
+
+  const tokenLength = (name: string): number => {
+    const value = authnResult?.[name];
+    return typeof value === 'string' ? value.length : 0;
+  };
+
+  return {
+    blobPresent: blobKey !== null,
+    blobKey,
+    blobByteLength: blobRaw.length,
+    topLevelKeys: parsed ? Object.keys(parsed) : [],
+    authnResult: {
+      present: authnResult !== null,
+      fieldNames: authnResult ? Object.keys(authnResult) : [],
+      accessTokenLength: tokenLength('access_token'),
+      refreshTokenLength: tokenLength('refresh_token'),
+      idTokenLength: tokenLength('id_token'),
+    },
   };
 }
