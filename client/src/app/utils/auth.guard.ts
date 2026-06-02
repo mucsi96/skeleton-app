@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn } from '@angular/router';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
 import { catchError, of, switchMap, take } from 'rxjs';
+import { AuthRefreshService } from './auth-refresh.service';
 
 /**
  * Gates the app on a valid session and, before falling back to a full
@@ -12,6 +13,7 @@ import { catchError, of, switchMap, take } from 'rxjs';
  */
 export const authGuard: CanActivateFn = () => {
   const oidc = inject(OidcSecurityService);
+  const authRefresh = inject(AuthRefreshService);
 
   return oidc.isAuthenticated().pipe(
     take(1),
@@ -38,7 +40,7 @@ export const authGuard: CanActivateFn = () => {
             '[auth] Not authenticated but refresh token present - attempting silent renewal before full re-authentication',
             JSON.stringify({ refreshTokenLength: refreshToken.length })
           );
-          return oidc.forceRefreshSession().pipe(
+          return authRefresh.refresh('guard-silent-renew').pipe(
             switchMap((result) => {
               if (result.isAuthenticated) {
                 console.info(

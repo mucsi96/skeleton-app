@@ -2,6 +2,7 @@ import { DestroyRef, inject, Injectable } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
 import { catchError, EMPTY, forkJoin, fromEvent, merge, tap, throttleTime } from 'rxjs';
+import { AuthRefreshService } from './auth-refresh.service';
 
 /**
  * Keeps the access token fresh on mobile.
@@ -23,6 +24,7 @@ import { catchError, EMPTY, forkJoin, fromEvent, merge, tap, throttleTime } from
 @Injectable({ providedIn: 'root' })
 export class TokenRenewalService {
   private readonly oidcSecurityService = inject(OidcSecurityService);
+  private readonly authRefresh = inject(AuthRefreshService);
   private readonly destroyRef = inject(DestroyRef);
 
   init(): void {
@@ -98,8 +100,8 @@ export class TokenRenewalService {
         console.info(
           '[auth] Cold start - proactively refreshing access token using stored refresh token'
         );
-        this.oidcSecurityService
-          .forceRefreshSession()
+        this.authRefresh
+          .refresh('cold-start')
           .pipe(
             tap((result) =>
               console.info(
@@ -165,8 +167,8 @@ export class TokenRenewalService {
         console.info(
           '[auth] Proactively refreshing access token using stored refresh token'
         );
-        this.oidcSecurityService
-          .forceRefreshSession()
+        this.authRefresh
+          .refresh('foreground')
           .pipe(
             tap((result) =>
               console.info(
