@@ -11,10 +11,14 @@ import { catchError, EMPTY, forkJoin, fromEvent, merge, tap, throttleTime } from
  * a phone is most of the time. The scheduled renewal therefore never fires and
  * the user returns to an expired token and a forced re-login.
  *
- * This service renews proactively whenever the app comes back to the
- * foreground (the moment iOS un-freezes the page and the user is about to make
- * a request anyway), so the hourly access-token expiry stops being noticeable.
- * Cold start is intentionally left to the library's own `checkAuth` flow.
+ * This service renews proactively on two triggers:
+ *   1. Cold start - because iOS PWA frequently kills the page when backgrounded
+ *      and every "reopen" is actually a fresh load with a stale access token.
+ *   2. visibilitychange/focus/online - when the page is kept alive but
+ *      backgrounded, this catches the moment iOS un-freezes timers.
+ *
+ * Either way the next API request goes out with a token that was just minted,
+ * so the hourly access-token expiry stops being noticeable.
  */
 @Injectable({ providedIn: 'root' })
 export class TokenRenewalService {
@@ -22,7 +26,7 @@ export class TokenRenewalService {
   private readonly destroyRef = inject(DestroyRef);
 
   init(): void {
-    this.logColdStartSnapshot();
+    this.renewOnColdStart();
 
     const visible$ = fromEvent(document, 'visibilitychange');
     const focus$ = fromEvent(window, 'focus');
@@ -37,14 +41,16 @@ export class TokenRenewalService {
   }
 
   /**
-   * Single boot-time entry that always lands in Faro, even when nothing else
-   * fires. On iOS PWA the page is frequently terminated when backgrounded, so
-   * every "return to foreground" is actually a cold start with no
-   * visibilitychange/focus event to hook into. This snapshot is the only signal
-   * that explains which state the new page instance started in: did the OIDC
-   * storage survive, did the user come back from the authority redirect, etc.
+   * Snapshots the boot-time auth state and, if there is something to refresh
+   * with, proactively mints a new access token. iOS PWA cold starts are
+   * frequent (the page is killed every time the user backgrounds it) and the
+   * library's checkAuth happily restores a session backed by a near-expired
+   * access token, so without this step the very next API call risks a 401.
+   *
+   * Skipped while the OIDC library is completing an authority redirect - the
+   * code exchange in checkAuth must not race with a parallel refresh.
    */
-  private logColdStartSnapshot(): void {
+  private renewOnColdStart(): void {
     const url = new URL(window.location.href);
     const returnedFromAuthority =
       url.searchParams.has('code') || url.searchParams.has('error');
@@ -76,6 +82,46 @@ export class TokenRenewalService {
             storage: snapshotStorageKeys(),
           })
         );
+
+        if (returnedFromAuthority) {
+          console.info(
+            '[auth] Cold start - skipping proactive refresh, OIDC library is completing the authority redirect'
+          );
+          return;
+        }
+
+        if (!hasRefreshToken) {
+          // authGuard handles the no-refresh-token branch (full re-auth)
+          return;
+        }
+
+        console.info(
+          '[auth] Cold start - proactively refreshing access token using stored refresh token'
+        );
+        this.oidcSecurityService
+          .forceRefreshSession()
+          .pipe(
+            tap((result) =>
+              console.info(
+                '[auth] Cold start proactive token refresh completed',
+                JSON.stringify({
+                  isAuthenticated: result?.isAuthenticated ?? false,
+                  hasAccessToken: !!result?.accessToken,
+                })
+              )
+            ),
+            catchError((error: unknown) => {
+              console.error(
+                '[auth] Cold start proactive token refresh failed',
+                JSON.stringify({
+                  error: error instanceof Error ? error.message : String(error),
+                })
+              );
+              return EMPTY;
+            }),
+            takeUntilDestroyed(this.destroyRef)
+          )
+          .subscribe();
       });
   }
 
