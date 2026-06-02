@@ -11,9 +11,10 @@ import { catchError, EMPTY, forkJoin, fromEvent, merge, tap, throttleTime } from
  * a phone is most of the time. The scheduled renewal therefore never fires and
  * the user returns to an expired token and a forced re-login.
  *
- * This service renews proactively whenever the app comes back to the
- * foreground (the moment iOS un-freezes the page and the user is about to make
- * a request anyway), so the hourly access-token expiry stops being noticeable.
+ * This service renews proactively on cold start and whenever the app comes
+ * back to the foreground (the moment iOS un-freezes the page and the user is
+ * about to make a request anyway), so the hourly access-token expiry stops
+ * being noticeable.
  */
 @Injectable({ providedIn: 'root' })
 export class TokenRenewalService {
@@ -21,6 +22,8 @@ export class TokenRenewalService {
   private readonly destroyRef = inject(DestroyRef);
 
   init(): void {
+    this.tryRenew('App opened');
+
     const visible$ = fromEvent(document, 'visibilitychange');
     const focus$ = fromEvent(window, 'focus');
     const online$ = fromEvent(window, 'online');
@@ -30,14 +33,15 @@ export class TokenRenewalService {
         throttleTime(30_000, undefined, { leading: true, trailing: false }),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe(() => this.renewIfForeground());
+      .subscribe(() => {
+        if (document.visibilityState !== 'visible') {
+          return;
+        }
+        this.tryRenew('App returned to foreground');
+      });
   }
 
-  private renewIfForeground(): void {
-    if (document.visibilityState !== 'visible') {
-      return;
-    }
-
+  private tryRenew(context: 'App opened' | 'App returned to foreground'): void {
     forkJoin({
       isAuthenticated: this.oidcSecurityService.isAuthenticated(),
       refreshToken: this.oidcSecurityService.getRefreshToken(),
@@ -49,7 +53,7 @@ export class TokenRenewalService {
         const hasAccessToken = !!accessToken;
 
         console.info(
-          `[auth] App returned to foreground - refresh token ${
+          `[auth] ${context} - refresh token ${
             hasRefreshToken ? 'still present in storage' : 'gone from storage'
           }`,
           JSON.stringify({
@@ -65,23 +69,25 @@ export class TokenRenewalService {
 
         if (!hasRefreshToken) {
           console.warn(
-            '[auth] App returned to foreground but no refresh token present anymore in storage - silent renewal impossible, full re-authentication will be required'
+            `[auth] ${context} but no refresh token present anymore in storage - silent renewal impossible, full re-authentication will be required`
           );
           return;
         }
 
         console.info(
-          '[auth] Proactively refreshing access token using stored refresh token'
+          `[auth] Proactively refreshing access token using stored refresh token (${context})`
         );
         this.oidcSecurityService
           .forceRefreshSession()
           .pipe(
             tap(() =>
-              console.info('[auth] Proactive foreground token refresh completed')
+              console.info(
+                `[auth] Proactive token refresh completed (${context})`
+              )
             ),
             catchError((error: unknown) => {
               console.error(
-                '[auth] Proactive foreground token refresh failed',
+                `[auth] Proactive token refresh failed (${context})`,
                 JSON.stringify({
                   error: error instanceof Error ? error.message : String(error),
                 })
