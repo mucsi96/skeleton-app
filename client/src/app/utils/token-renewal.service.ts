@@ -22,6 +22,8 @@ export class TokenRenewalService {
   private readonly destroyRef = inject(DestroyRef);
 
   init(): void {
+    this.logColdStartSnapshot();
+
     const visible$ = fromEvent(document, 'visibilitychange');
     const focus$ = fromEvent(window, 'focus');
     const online$ = fromEvent(window, 'online');
@@ -32,6 +34,49 @@ export class TokenRenewalService {
         takeUntilDestroyed(this.destroyRef)
       )
       .subscribe(() => this.renewIfForeground());
+  }
+
+  /**
+   * Single boot-time entry that always lands in Faro, even when nothing else
+   * fires. On iOS PWA the page is frequently terminated when backgrounded, so
+   * every "return to foreground" is actually a cold start with no
+   * visibilitychange/focus event to hook into. This snapshot is the only signal
+   * that explains which state the new page instance started in: did the OIDC
+   * storage survive, did the user come back from the authority redirect, etc.
+   */
+  private logColdStartSnapshot(): void {
+    const url = new URL(window.location.href);
+    const returnedFromAuthority =
+      url.searchParams.has('code') || url.searchParams.has('error');
+
+    forkJoin({
+      isAuthenticated: this.oidcSecurityService.isAuthenticated(),
+      refreshToken: this.oidcSecurityService.getRefreshToken(),
+      accessToken: this.oidcSecurityService.getAccessToken(),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(({ isAuthenticated, refreshToken, accessToken }) => {
+        const hasRefreshToken = !!refreshToken;
+        const hasAccessToken = !!accessToken;
+
+        console.info(
+          `[auth] Cold start - ${
+            hasRefreshToken ? 'refresh token present in storage' : 'no refresh token in storage'
+          }`,
+          JSON.stringify({
+            isAuthenticated,
+            hasRefreshToken,
+            hasAccessToken,
+            refreshTokenLength: refreshToken?.length ?? 0,
+            returnedFromAuthority,
+            displayMode:
+              window.matchMedia?.('(display-mode: standalone)').matches
+                ? 'standalone'
+                : 'browser',
+            storage: snapshotStorageKeys(),
+          })
+        );
+      });
   }
 
   private renewIfForeground(): void {
@@ -77,8 +122,14 @@ export class TokenRenewalService {
         this.oidcSecurityService
           .forceRefreshSession()
           .pipe(
-            tap(() =>
-              console.info('[auth] Proactive foreground token refresh completed')
+            tap((result) =>
+              console.info(
+                '[auth] Proactive foreground token refresh completed',
+                JSON.stringify({
+                  isAuthenticated: result?.isAuthenticated ?? false,
+                  hasAccessToken: !!result?.accessToken,
+                })
+              )
             ),
             catchError((error: unknown) => {
               console.error(

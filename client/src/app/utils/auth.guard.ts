@@ -17,6 +17,9 @@ export const authGuard: CanActivateFn = () => {
     take(1),
     switchMap((isAuthenticated) => {
       if (isAuthenticated) {
+        console.info(
+          '[auth] Auth guard passed - already authenticated, no renewal needed'
+        );
         return of(true);
       }
 
@@ -32,7 +35,8 @@ export const authGuard: CanActivateFn = () => {
           }
 
           console.info(
-            '[auth] Not authenticated but refresh token present - attempting silent renewal before full re-authentication'
+            '[auth] Not authenticated but refresh token present - attempting silent renewal before full re-authentication',
+            JSON.stringify({ refreshTokenLength: refreshToken.length })
           );
           return oidc.forceRefreshSession().pipe(
             switchMap((result) => {
