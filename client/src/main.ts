@@ -8,7 +8,7 @@ loadEnvironmentConfig().then(environment => {
   initFaro(environment.clientLogUrl, environment.clientAppName);
   const url = new URL(window.location.href);
   console.info(
-    '[auth] Boot - Faro initialized, starting Angular bootstrap',
+    '[boot] Faro initialized, starting Angular bootstrap',
     JSON.stringify({
       returnedFromAuthority:
         url.searchParams.has('code') || url.searchParams.has('error'),
@@ -20,7 +20,7 @@ loadEnvironmentConfig().then(environment => {
     })
   );
   bootstrapApplication(AppComponent, getAppConfig(environment))
-    .catch((err) => console.error('[auth] Angular bootstrap failed', err));
+    .catch((err) => console.error('[boot] Angular bootstrap failed', err));
 });
 
 async function loadEnvironmentConfig(): Promise<EnvironmentConfig> {
