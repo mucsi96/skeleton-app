@@ -14,6 +14,7 @@ import { catchError, EMPTY, forkJoin, fromEvent, merge, tap, throttleTime } from
  * This service renews proactively whenever the app comes back to the
  * foreground (the moment iOS un-freezes the page and the user is about to make
  * a request anyway), so the hourly access-token expiry stops being noticeable.
+ * Cold start is intentionally left to the library's own `checkAuth` flow.
  */
 @Injectable({ providedIn: 'root' })
 export class TokenRenewalService {
@@ -50,7 +51,7 @@ export class TokenRenewalService {
 
         console.info(
           `[auth] App returned to foreground - refresh token ${
-            hasRefreshToken ? 'still present in storage' : 'gone from storage'
+            hasRefreshToken ? 'present in storage' : 'not in storage'
           }`,
           JSON.stringify({
             isAuthenticated,
@@ -65,7 +66,7 @@ export class TokenRenewalService {
 
         if (!hasRefreshToken) {
           console.warn(
-            '[auth] No refresh token in storage on foreground - silent renewal impossible, full re-authentication will be required'
+            '[auth] App returned to foreground with no refresh token in storage - silent renewal impossible, full re-authentication will be required'
           );
           return;
         }
