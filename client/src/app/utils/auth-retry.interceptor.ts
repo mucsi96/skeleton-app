@@ -1,7 +1,7 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, switchMap, tap, throwError } from 'rxjs';
-import { AuthRefreshService } from './auth-refresh.service';
+import { AuthService } from '../auth.service';
 
 const isApiRequest = (url: string): boolean => /\/api(\/|$)/.test(url);
 
@@ -18,7 +18,7 @@ const isApiRequest = (url: string): boolean => /\/api(\/|$)/.test(url);
  * successful retry never surfaces a spurious error notification.
  */
 export const authRetryInterceptor: HttpInterceptorFn = (req, next) => {
-  const authRefresh = inject(AuthRefreshService);
+  const auth = inject(AuthService);
 
   return next(req).pipe(
     catchError((error: unknown) => {
@@ -33,7 +33,7 @@ export const authRetryInterceptor: HttpInterceptorFn = (req, next) => {
         JSON.stringify({ url: req.url })
       );
 
-      return authRefresh.refresh('http-401').pipe(
+      return auth.refresh('http-401').pipe(
         tap((result) =>
           console.info(
             '[auth] Token refreshed after 401 - retrying original request',

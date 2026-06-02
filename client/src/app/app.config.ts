@@ -20,7 +20,7 @@ import { routes } from './app.routes';
 import { errorInterceptor } from './utils/error.interceptor';
 import { authRetryInterceptor } from './utils/auth-retry.interceptor';
 import { timezoneInterceptor } from './utils/timezone.interceptor';
-import { TokenRenewalService } from './utils/token-renewal.service';
+import { AuthService } from './auth.service';
 import { authInterceptor } from 'angular-auth-oidc-client';
 import { provideOidcAuth } from './auth.config';
 import {
@@ -50,7 +50,7 @@ export function getAppConfig(environment: EnvironmentConfig): ApplicationConfig 
       provideAngularMaterialTheme(),
       { provide: ENVIRONMENT_CONFIG, useValue: environment },
       provideOidcAuth(environment),
-      provideAppInitializer(() => inject(TokenRenewalService).init()),
+      provideAppInitializer(() => inject(AuthService).init()),
     ],
   };
 }
