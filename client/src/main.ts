@@ -6,8 +6,21 @@ import { initFaro } from './app/utils/faro';
 
 loadEnvironmentConfig().then(environment => {
   initFaro(environment.clientLogUrl, environment.clientAppName);
+  const url = new URL(window.location.href);
+  console.info(
+    '[boot] Faro initialized, starting Angular bootstrap',
+    JSON.stringify({
+      returnedFromAuthority:
+        url.searchParams.has('code') || url.searchParams.has('error'),
+      displayMode:
+        window.matchMedia?.('(display-mode: standalone)').matches
+          ? 'standalone'
+          : 'browser',
+      visibilityState: document.visibilityState,
+    })
+  );
   bootstrapApplication(AppComponent, getAppConfig(environment))
-    .catch((err) => console.error(err));
+    .catch((err) => console.error('[boot] Angular bootstrap failed', err));
 });
 
 async function loadEnvironmentConfig(): Promise<EnvironmentConfig> {

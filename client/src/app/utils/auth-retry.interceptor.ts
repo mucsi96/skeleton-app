@@ -34,12 +34,28 @@ export const authRetryInterceptor: HttpInterceptorFn = (req, next) => {
       );
 
       return oidcSecurityService.forceRefreshSession().pipe(
-        tap(() =>
+        tap((result) =>
           console.info(
             '[auth] Token refreshed after 401 - retrying original request',
-            JSON.stringify({ url: req.url })
+            JSON.stringify({
+              url: req.url,
+              isAuthenticated: result?.isAuthenticated ?? false,
+            })
           )
         ),
+        catchError((refreshError: unknown) => {
+          console.warn(
+            '[auth] Token refresh after 401 failed - propagating original error',
+            JSON.stringify({
+              url: req.url,
+              error:
+                refreshError instanceof Error
+                  ? refreshError.message
+                  : String(refreshError),
+            })
+          );
+          return throwError(() => error);
+        }),
         switchMap(() => next(req))
       );
     })
