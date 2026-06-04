@@ -1,37 +1,21 @@
 import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NotificationsService } from '@mucsi96/angular-material-theme';
 import { User } from 'oidc-client-ts';
-import {
-  catchError,
-  defer,
-  EMPTY,
-  finalize,
-  from,
-  fromEvent,
-  merge,
-  Observable,
-  of,
-  shareReplay,
-  switchMap,
-  take,
-  tap,
-  throttleTime,
-  throwError,
-} from 'rxjs';
 import { USER_MANAGER } from './auth.config';
 import { flushFaro } from './utils/faro';
 
+/** Leading-edge throttle window for the foreground proactive refresh. */
+const FOREGROUND_REFRESH_THROTTLE_MS = 30_000;
+
 /**
  * Single owner of the OIDC session, built on oidc-client-ts with every
- * automatic behaviour disabled (see auth.config). Call sites stay thin:
+ * automatic behaviour disabled (see auth.config). Signal-first and RxJS-free:
  *  - signal-shaped state for components (isAuthenticated, userData)
  *  - cold-start + visibilitychange/focus/online proactive refresh, because the
  *    library no longer runs any background renew timer (and iOS would freeze it
  *    anyway while the PWA is backgrounded)
  *  - single-flight `refresh()` - cold-start, foreground transition, the 401
- *    interceptor and the route guard share one in-flight signinSilent
- *  - `ensureAuthenticated()` - the route guard's decision, which blocks on any
+ *    interceptor and the route guard share one in-flight signinSilent promise
+ *  - `ensureAuthenticated()` - the route guard's decision, which awaits any
  *    in-flight refresh so a route never activates with a token about to change
  *
  * Unlike the previous library, a failed signinSilent does NOT wipe the stored
@@ -40,12 +24,12 @@ import { flushFaro } from './utils/faro';
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly notifications = inject(NotificationsService);
   private readonly userManager = inject(USER_MANAGER);
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly user = signal<User | null>(null);
-  private inFlightRefresh$: Observable<User | null> | null = null;
+  private inFlightRefresh: Promise<User | null> | null = null;
+  private lastForegroundRefresh = 0;
   private returnedFromAuthority = false;
 
   readonly isAuthenticated = computed(() => {
@@ -63,7 +47,7 @@ export class AuthService {
     this.registerEventLogging();
     await this.loadInitialUser();
     this.installForegroundRefresh();
-    this.runColdStartRefresh();
+    void this.runColdStartRefresh();
   }
 
   login(): void {
@@ -98,106 +82,102 @@ export class AuthService {
   }
 
   /**
-   * Waits for any in-flight refresh to settle before deciding whether the user
-   * is authenticated, so a route never renders with a token that is about to be
+   * Awaits any in-flight refresh before deciding whether the user is
+   * authenticated, so a route never renders with a token that is about to be
    * replaced. Falls back to silent renewal (when a refresh token is present) or
-   * a full authority redirect.
+   * a full authority redirect. Returns a Promise - CanActivateFn accepts it.
    */
-  ensureAuthenticated(): Observable<boolean> {
-    return defer(() => this.inFlightRefresh$ ?? of(null)).pipe(
-      switchMap(() => from(this.userManager.getUser())),
-      take(1),
-      switchMap((user) => {
-        this.user.set(user);
+  async ensureAuthenticated(): Promise<boolean> {
+    if (this.inFlightRefresh) {
+      await this.inFlightRefresh.catch(() => null);
+    }
 
-        if (user && !user.expired) {
-          console.info(
-            '[auth] Auth guard passed - already authenticated, no renewal needed'
-          );
-          return of(true);
-        }
+    const user = await this.userManager.getUser();
+    this.user.set(user);
 
-        if (!user?.refresh_token) {
-          console.info(
-            '[auth] Full re-authentication started - not authenticated and no refresh token in storage'
-          );
-          this.login();
-          return of(false);
-        }
+    if (user && !user.expired) {
+      console.info(
+        '[auth] Auth guard passed - already authenticated, no renewal needed'
+      );
+      return true;
+    }
 
-        console.info(
-          '[auth] Not authenticated but refresh token present - attempting silent renewal before full re-authentication',
-          JSON.stringify({ refreshTokenLength: user.refresh_token.length })
-        );
-        return this.refresh('guard-silent-renew').pipe(
-          switchMap((renewed) => {
-            if (renewed && !renewed.expired) {
-              console.info(
-                '[auth] Silent renewal recovered the session - skipping full re-authentication'
-              );
-              return of(true);
-            }
-            console.warn(
-              '[auth] Full re-authentication started - silent renewal did not authenticate'
-            );
-            this.login();
-            return of(false);
-          }),
-          catchError((error: unknown) => {
-            console.warn(
-              '[auth] Full re-authentication started - silent renewal failed',
-              JSON.stringify({ error: errorMessage(error) })
-            );
-            this.login();
-            return of(false);
-          })
-        );
-      })
+    if (!user?.refresh_token) {
+      console.info(
+        '[auth] Full re-authentication started - not authenticated and no refresh token in storage'
+      );
+      this.login();
+      return false;
+    }
+
+    console.info(
+      '[auth] Not authenticated but refresh token present - attempting silent renewal before full re-authentication',
+      JSON.stringify({ refreshTokenLength: user.refresh_token.length })
     );
+    try {
+      const renewed = await this.refresh('guard-silent-renew');
+      if (renewed && !renewed.expired) {
+        console.info(
+          '[auth] Silent renewal recovered the session - skipping full re-authentication'
+        );
+        return true;
+      }
+      console.warn(
+        '[auth] Full re-authentication started - silent renewal did not authenticate'
+      );
+    } catch (error) {
+      console.warn(
+        '[auth] Full re-authentication started - silent renewal failed',
+        JSON.stringify({ error: errorMessage(error) })
+      );
+    }
+    this.login();
+    return false;
   }
 
   /**
    * Single-flight signinSilent (refresh-token grant). Concurrent callers join
-   * the same in-flight Observable; a fresh refresh starts on the next call once
+   * the same in-flight promise; a fresh refresh starts on the next call once
    * the previous one has settled.
    */
-  refresh(reason: string): Observable<User | null> {
-    if (this.inFlightRefresh$) {
+  refresh(reason: string): Promise<User | null> {
+    if (this.inFlightRefresh) {
       console.info(
         '[auth] Refresh requested while another is in flight - joining',
         JSON.stringify({ reason })
       );
-      return this.inFlightRefresh$;
+      return this.inFlightRefresh;
     }
 
     console.info('[auth] Refresh starting', JSON.stringify({ reason }));
-    this.inFlightRefresh$ = from(this.userManager.signinSilent()).pipe(
-      tap((user) => {
-        this.user.set(user);
-        console.info(
-          '[auth] Refresh completed',
-          JSON.stringify({
-            isAuthenticated: !!user && !user.expired,
-            hasAccessToken: !!user?.access_token,
-            hasRefreshToken: !!user?.refresh_token,
-          })
-        );
-      }),
-      catchError((error: unknown) => {
-        // signinSilent leaves the stored user untouched on failure - surface
-        // the error but keep the session for the next attempt / 401 retry.
-        console.warn(
-          '[auth] Refresh failed',
-          JSON.stringify({ reason, error: errorMessage(error) })
-        );
-        return throwError(() => error);
-      }),
-      finalize(() => {
-        this.inFlightRefresh$ = null;
-      }),
-      shareReplay({ bufferSize: 1, refCount: false })
-    );
-    return this.inFlightRefresh$;
+    this.inFlightRefresh = this.runRefresh(reason).finally(() => {
+      this.inFlightRefresh = null;
+    });
+    return this.inFlightRefresh;
+  }
+
+  private async runRefresh(reason: string): Promise<User | null> {
+    try {
+      const user = await this.userManager.signinSilent();
+      this.user.set(user);
+      console.info(
+        '[auth] Refresh completed',
+        JSON.stringify({
+          isAuthenticated: !!user && !user.expired,
+          hasAccessToken: !!user?.access_token,
+          hasRefreshToken: !!user?.refresh_token,
+        })
+      );
+      return user;
+    } catch (error) {
+      // signinSilent leaves the stored user untouched on failure - surface the
+      // error but keep the session for the next attempt / 401 retry.
+      console.warn(
+        '[auth] Refresh failed',
+        JSON.stringify({ reason, error: errorMessage(error) })
+      );
+      throw error;
+    }
   }
 
   private registerEventLogging(): void {
@@ -270,7 +250,7 @@ export class AuthService {
     );
   }
 
-  private runColdStartRefresh(): void {
+  private async runColdStartRefresh(): Promise<void> {
     if (this.returnedFromAuthority) {
       // The callback already produced a fresh token; nothing to renew.
       return;
@@ -282,67 +262,64 @@ export class AuthService {
     console.info(
       '[auth] Cold start - proactively refreshing access token using stored refresh token'
     );
-    this.refresh('cold-start')
-      .pipe(
-        catchError(() => EMPTY),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe();
+    // Failure is already logged inside runRefresh; swallow so it stays proactive.
+    await this.refresh('cold-start').catch(() => null);
   }
 
   private installForegroundRefresh(): void {
-    merge(
-      fromEvent(document, 'visibilitychange'),
-      fromEvent(window, 'focus'),
-      fromEvent(window, 'online')
-    )
-      .pipe(
-        throttleTime(30_000, undefined, { leading: true, trailing: false }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(() => this.runForegroundRefresh());
+    const handler = (): void => void this.runForegroundRefresh();
+    document.addEventListener('visibilitychange', handler);
+    window.addEventListener('focus', handler);
+    window.addEventListener('online', handler);
+    this.destroyRef.onDestroy(() => {
+      document.removeEventListener('visibilitychange', handler);
+      window.removeEventListener('focus', handler);
+      window.removeEventListener('online', handler);
+    });
   }
 
-  private runForegroundRefresh(): void {
+  private async runForegroundRefresh(): Promise<void> {
     if (document.visibilityState !== 'visible') {
       return;
     }
 
-    this.userManager.getUser().then((user) => {
-      this.user.set(user);
-      const hasRefreshToken = !!user?.refresh_token;
+    // Leading-edge throttle (replaces RxJS throttleTime): act on the first
+    // event then ignore further ones for the window.
+    const now = Date.now();
+    if (now - this.lastForegroundRefresh < FOREGROUND_REFRESH_THROTTLE_MS) {
+      return;
+    }
+    this.lastForegroundRefresh = now;
 
-      console.info(
-        `[auth] App returned to foreground - refresh token ${
-          hasRefreshToken ? 'present in storage' : 'not in storage'
-        }`,
-        JSON.stringify({
-          isAuthenticated: !!user && !user.expired,
-          hasRefreshToken,
-          hasAccessToken: !!user?.access_token,
-          refreshTokenLength: user?.refresh_token?.length ?? 0,
-          storage: snapshotStorageKeys(),
-          oidcStorage: inspectOidcStorage(),
-        })
+    const user = await this.userManager.getUser();
+    this.user.set(user);
+    const hasRefreshToken = !!user?.refresh_token;
+
+    console.info(
+      `[auth] App returned to foreground - refresh token ${
+        hasRefreshToken ? 'present in storage' : 'not in storage'
+      }`,
+      JSON.stringify({
+        isAuthenticated: !!user && !user.expired,
+        hasRefreshToken,
+        hasAccessToken: !!user?.access_token,
+        refreshTokenLength: user?.refresh_token?.length ?? 0,
+        storage: snapshotStorageKeys(),
+        oidcStorage: inspectOidcStorage(),
+      })
+    );
+
+    if (!hasRefreshToken) {
+      console.warn(
+        '[auth] App returned to foreground with no refresh token in storage - silent renewal impossible, full re-authentication will be required'
       );
+      return;
+    }
 
-      if (!hasRefreshToken) {
-        console.warn(
-          '[auth] App returned to foreground with no refresh token in storage - silent renewal impossible, full re-authentication will be required'
-        );
-        return;
-      }
-
-      console.info(
-        '[auth] Proactively refreshing access token using stored refresh token'
-      );
-      this.refresh('foreground')
-        .pipe(
-          catchError(() => EMPTY),
-          takeUntilDestroyed(this.destroyRef)
-        )
-        .subscribe();
-    });
+    console.info(
+      '[auth] Proactively refreshing access token using stored refresh token'
+    );
+    await this.refresh('foreground').catch(() => null);
   }
 }
 
