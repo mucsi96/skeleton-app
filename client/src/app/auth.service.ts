@@ -70,26 +70,29 @@ export class AuthService {
     console.info(
       '[auth] Full re-authentication started (redirect to authority)'
     );
-    flushFaro();
-    this.userManager.signinRedirect().catch((error) =>
-      console.error(
-        '[auth] signinRedirect failed',
-        JSON.stringify({ error: errorMessage(error) })
-      )
-    );
+    // Await pending logs reaching the backend before navigating away.
+    flushFaro().finally(() => {
+      this.userManager.signinRedirect().catch((error) =>
+        console.error(
+          '[auth] signinRedirect failed',
+          JSON.stringify({ error: errorMessage(error) })
+        )
+      );
+    });
   }
 
   logout(): void {
     console.info('[auth] Logout started');
-    flushFaro();
-    this.userManager.signoutRedirect().catch((error) => {
-      // The mock provider exposes no end_session_endpoint; clear locally instead.
-      console.warn(
-        '[auth] signoutRedirect failed - clearing session locally',
-        JSON.stringify({ error: errorMessage(error) })
-      );
-      this.userManager.removeUser().finally(() => {
-        window.location.href = window.location.origin;
+    flushFaro().finally(() => {
+      this.userManager.signoutRedirect().catch((error) => {
+        // The mock provider exposes no end_session_endpoint; clear locally instead.
+        console.warn(
+          '[auth] signoutRedirect failed - clearing session locally',
+          JSON.stringify({ error: errorMessage(error) })
+        );
+        this.userManager.removeUser().finally(() => {
+          window.location.href = window.location.origin;
+        });
       });
     });
   }
