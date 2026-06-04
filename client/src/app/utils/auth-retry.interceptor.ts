@@ -39,7 +39,7 @@ export const authRetryInterceptor: HttpInterceptorFn = (req, next) => {
             '[auth] Token refreshed after 401 - retrying original request',
             JSON.stringify({
               url: req.url,
-              isAuthenticated: result?.isAuthenticated ?? false,
+              isAuthenticated: !!result && !result.expired,
             })
           )
         ),

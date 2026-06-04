@@ -21,7 +21,7 @@ import { errorInterceptor } from './utils/error.interceptor';
 import { authRetryInterceptor } from './utils/auth-retry.interceptor';
 import { timezoneInterceptor } from './utils/timezone.interceptor';
 import { AuthService } from './auth.service';
-import { authInterceptor } from 'angular-auth-oidc-client';
+import { tokenInterceptor } from './utils/token.interceptor';
 import { provideOidcAuth } from './auth.config';
 import {
   EnvironmentConfig,
@@ -41,7 +41,7 @@ export function getAppConfig(environment: EnvironmentConfig): ApplicationConfig 
         withInterceptors([
           errorInterceptor,
           authRetryInterceptor,
-          authInterceptor(),
+          tokenInterceptor,
           timezoneInterceptor,
         ])
       ),

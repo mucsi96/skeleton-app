@@ -1,16 +1,13 @@
-import { computed, DestroyRef, inject, Injectable } from '@angular/core';
+import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NotificationsService } from '@mucsi96/angular-material-theme';
-import {
-  LoginResponse,
-  OidcSecurityService,
-} from 'angular-auth-oidc-client';
+import { User } from 'oidc-client-ts';
 import {
   catchError,
   defer,
   EMPTY,
   finalize,
-  forkJoin,
+  from,
   fromEvent,
   merge,
   Observable,
@@ -20,41 +17,277 @@ import {
   take,
   tap,
   throttleTime,
+  throwError,
 } from 'rxjs';
+import { USER_MANAGER } from './auth.config';
+import { flushFaro } from './utils/faro';
 
 /**
- * Single owner of the OIDC session.
- *
- * Holds everything auth-related so call sites stay thin:
+ * Single owner of the OIDC session, built on oidc-client-ts with every
+ * automatic behaviour disabled (see auth.config). Call sites stay thin:
  *  - signal-shaped state for components (isAuthenticated, userData)
- *  - cold-start + visibilitychange/focus/online proactive refresh, because
- *    iOS freezes JS timers when the PWA is backgrounded and the library's
- *    timer-based silent renewal therefore never fires
+ *  - cold-start + visibilitychange/focus/online proactive refresh, because the
+ *    library no longer runs any background renew timer (and iOS would freeze it
+ *    anyway while the PWA is backgrounded)
  *  - single-flight `refresh()` - cold-start, foreground transition, the 401
- *    interceptor and the route guard all share one in-flight
- *    forceRefreshSession; running them in parallel makes
- *    angular-auth-oidc-client emit "authCallback incorrect nonce" and reset
- *    the session
- *  - `ensureAuthenticated()` - the route guard's decision, which blocks on
- *    any in-flight refresh so a route never activates with a token that's
- *    about to be replaced
+ *    interceptor and the route guard share one in-flight signinSilent
+ *  - `ensureAuthenticated()` - the route guard's decision, which blocks on any
+ *    in-flight refresh so a route never activates with a token about to change
+ *
+ * Unlike the previous library, a failed signinSilent does NOT wipe the stored
+ * user - we keep it so the next attempt can reuse the refresh token, and we are
+ * the only code that ever removes the session.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly notifications = inject(NotificationsService);
-  private readonly oidc = inject(OidcSecurityService);
+  private readonly userManager = inject(USER_MANAGER);
   private readonly destroyRef = inject(DestroyRef);
 
-  private inFlightRefresh$: Observable<LoginResponse> | null = null;
+  private readonly user = signal<User | null>(null);
+  private inFlightRefresh$: Observable<User | null> | null = null;
+  private returnedFromAuthority = false;
 
-  readonly isAuthenticated = computed(
-    () => this.oidc.authenticated().isAuthenticated
-  );
-  readonly userData = this.oidc.userData;
+  readonly isAuthenticated = computed(() => {
+    const user = this.user();
+    return !!user && !user.expired;
+  });
+  readonly userData = computed(() => this.user()?.profile ?? null);
 
-  init(): void {
-    this.runColdStart();
+  /** Current access token for the bearer-token interceptor (may be expired; the 401 retry handles that). */
+  getAccessToken(): string | null {
+    return this.user()?.access_token ?? null;
+  }
 
+  async init(): Promise<void> {
+    this.registerEventLogging();
+    await this.loadInitialUser();
+    this.installForegroundRefresh();
+    this.runColdStartRefresh();
+  }
+
+  login(): void {
+    console.info(
+      '[auth] Full re-authentication started (redirect to authority)'
+    );
+    flushFaro();
+    this.userManager.signinRedirect().catch((error) =>
+      console.error(
+        '[auth] signinRedirect failed',
+        JSON.stringify({ error: errorMessage(error) })
+      )
+    );
+  }
+
+  logout(): void {
+    console.info('[auth] Logout started');
+    flushFaro();
+    this.userManager.signoutRedirect().catch((error) => {
+      // The mock provider exposes no end_session_endpoint; clear locally instead.
+      console.warn(
+        '[auth] signoutRedirect failed - clearing session locally',
+        JSON.stringify({ error: errorMessage(error) })
+      );
+      this.userManager.removeUser().finally(() => {
+        window.location.href = window.location.origin;
+      });
+    });
+  }
+
+  /**
+   * Waits for any in-flight refresh to settle before deciding whether the user
+   * is authenticated, so a route never renders with a token that is about to be
+   * replaced. Falls back to silent renewal (when a refresh token is present) or
+   * a full authority redirect.
+   */
+  ensureAuthenticated(): Observable<boolean> {
+    return defer(() => this.inFlightRefresh$ ?? of(null)).pipe(
+      switchMap(() => from(this.userManager.getUser())),
+      take(1),
+      switchMap((user) => {
+        this.user.set(user);
+
+        if (user && !user.expired) {
+          console.info(
+            '[auth] Auth guard passed - already authenticated, no renewal needed'
+          );
+          return of(true);
+        }
+
+        if (!user?.refresh_token) {
+          console.info(
+            '[auth] Full re-authentication started - not authenticated and no refresh token in storage'
+          );
+          this.login();
+          return of(false);
+        }
+
+        console.info(
+          '[auth] Not authenticated but refresh token present - attempting silent renewal before full re-authentication',
+          JSON.stringify({ refreshTokenLength: user.refresh_token.length })
+        );
+        return this.refresh('guard-silent-renew').pipe(
+          switchMap((renewed) => {
+            if (renewed && !renewed.expired) {
+              console.info(
+                '[auth] Silent renewal recovered the session - skipping full re-authentication'
+              );
+              return of(true);
+            }
+            console.warn(
+              '[auth] Full re-authentication started - silent renewal did not authenticate'
+            );
+            this.login();
+            return of(false);
+          }),
+          catchError((error: unknown) => {
+            console.warn(
+              '[auth] Full re-authentication started - silent renewal failed',
+              JSON.stringify({ error: errorMessage(error) })
+            );
+            this.login();
+            return of(false);
+          })
+        );
+      })
+    );
+  }
+
+  /**
+   * Single-flight signinSilent (refresh-token grant). Concurrent callers join
+   * the same in-flight Observable; a fresh refresh starts on the next call once
+   * the previous one has settled.
+   */
+  refresh(reason: string): Observable<User | null> {
+    if (this.inFlightRefresh$) {
+      console.info(
+        '[auth] Refresh requested while another is in flight - joining',
+        JSON.stringify({ reason })
+      );
+      return this.inFlightRefresh$;
+    }
+
+    console.info('[auth] Refresh starting', JSON.stringify({ reason }));
+    this.inFlightRefresh$ = from(this.userManager.signinSilent()).pipe(
+      tap((user) => {
+        this.user.set(user);
+        console.info(
+          '[auth] Refresh completed',
+          JSON.stringify({
+            isAuthenticated: !!user && !user.expired,
+            hasAccessToken: !!user?.access_token,
+            hasRefreshToken: !!user?.refresh_token,
+          })
+        );
+      }),
+      catchError((error: unknown) => {
+        // signinSilent leaves the stored user untouched on failure - surface
+        // the error but keep the session for the next attempt / 401 retry.
+        console.warn(
+          '[auth] Refresh failed',
+          JSON.stringify({ reason, error: errorMessage(error) })
+        );
+        return throwError(() => error);
+      }),
+      finalize(() => {
+        this.inFlightRefresh$ = null;
+      }),
+      shareReplay({ bufferSize: 1, refCount: false })
+    );
+    return this.inFlightRefresh$;
+  }
+
+  private registerEventLogging(): void {
+    const events = this.userManager.events;
+    events.addUserLoaded((user) => {
+      this.user.set(user);
+      console.info('[auth] User loaded', JSON.stringify(describeUser(user)));
+    });
+    events.addUserUnloaded(() => {
+      this.user.set(null);
+      console.info('[auth] User unloaded - session removed from storage');
+    });
+    events.addAccessTokenExpiring(() =>
+      console.info('[auth] Access token expiring')
+    );
+    events.addAccessTokenExpired(() =>
+      console.warn('[auth] Access token expired')
+    );
+    events.addSilentRenewError((error) =>
+      console.warn(
+        '[auth] Silent renew error',
+        JSON.stringify({ error: errorMessage(error) })
+      )
+    );
+  }
+
+  private async loadInitialUser(): Promise<void> {
+    const url = new URL(window.location.href);
+    this.returnedFromAuthority =
+      url.searchParams.has('code') || url.searchParams.has('error');
+
+    if (this.returnedFromAuthority) {
+      try {
+        const user = await this.userManager.signinRedirectCallback();
+        this.user.set(user);
+        console.info(
+          '[auth] Cold start - redirect callback processed',
+          JSON.stringify({ ...describeUser(user), storage: snapshotStorageKeys() })
+        );
+      } catch (error) {
+        console.error(
+          '[auth] Cold start - redirect callback failed',
+          JSON.stringify({ error: errorMessage(error) })
+        );
+      }
+      // Strip the auth params so refreshes and deep links stay clean.
+      history.replaceState(history.state, '', url.origin + url.pathname);
+      return;
+    }
+
+    const user = await this.userManager.getUser();
+    this.user.set(user);
+    const hasRefreshToken = !!user?.refresh_token;
+    console.info(
+      `[auth] Cold start - ${
+        hasRefreshToken
+          ? 'refresh token present in storage'
+          : 'no refresh token in storage'
+      }`,
+      JSON.stringify({
+        isAuthenticated: !!user && !user.expired,
+        hasRefreshToken,
+        hasAccessToken: !!user?.access_token,
+        refreshTokenLength: user?.refresh_token?.length ?? 0,
+        returnedFromAuthority: false,
+        displayMode: displayMode(),
+        storage: snapshotStorageKeys(),
+        oidcStorage: inspectOidcStorage(),
+      })
+    );
+  }
+
+  private runColdStartRefresh(): void {
+    if (this.returnedFromAuthority) {
+      // The callback already produced a fresh token; nothing to renew.
+      return;
+    }
+    if (!this.user()?.refresh_token) {
+      // ensureAuthenticated handles the no-refresh-token path (full re-auth).
+      return;
+    }
+    console.info(
+      '[auth] Cold start - proactively refreshing access token using stored refresh token'
+    );
+    this.refresh('cold-start')
+      .pipe(
+        catchError(() => EMPTY),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe();
+  }
+
+  private installForegroundRefresh(): void {
     merge(
       fromEvent(document, 'visibilitychange'),
       fromEvent(window, 'focus'),
@@ -67,268 +300,75 @@ export class AuthService {
       .subscribe(() => this.runForegroundRefresh());
   }
 
-  login(): void {
-    console.info(
-      '[auth] Full re-authentication started (redirect to authority)'
-    );
-    this.oidc.authorize();
-  }
-
-  logout(): void {
-    console.info('[auth] Logout started');
-    this.oidc.logoff().subscribe({
-      error: (err) => this.showError(err),
-    });
-  }
-
-  /**
-   * Waits for any in-flight refresh to settle before deciding whether the
-   * user is authenticated, so a route never renders with a token that is
-   * about to be replaced. Falls back to silent renewal (when a refresh
-   * token is present) or a full authority redirect.
-   */
-  ensureAuthenticated(): Observable<boolean> {
-    return defer(() => this.inFlightRefresh$ ?? of(null)).pipe(
-      switchMap(() =>
-        forkJoin({
-          isAuthenticated: this.oidc.isAuthenticated(),
-          refreshToken: this.oidc.getRefreshToken(),
-        })
-      ),
-      take(1),
-      switchMap(({ isAuthenticated, refreshToken }) => {
-        if (isAuthenticated) {
-          console.info(
-            '[auth] Auth guard passed - already authenticated, no renewal needed'
-          );
-          return of(true);
-        }
-
-        if (!refreshToken) {
-          console.info(
-            '[auth] Full re-authentication started - not authenticated and no refresh token in storage'
-          );
-          this.oidc.authorize();
-          return of(false);
-        }
-
-        console.info(
-          '[auth] Not authenticated but refresh token present - attempting silent renewal before full re-authentication',
-          JSON.stringify({ refreshTokenLength: refreshToken.length })
-        );
-        return this.refresh('guard-silent-renew').pipe(
-          switchMap((result) => {
-            if (result?.isAuthenticated) {
-              console.info(
-                '[auth] Silent renewal recovered the session - skipping full re-authentication'
-              );
-              return of(true);
-            }
-            console.warn(
-              '[auth] Full re-authentication started - silent renewal did not authenticate'
-            );
-            this.oidc.authorize();
-            return of(false);
-          }),
-          catchError((error: unknown) => {
-            console.warn(
-              '[auth] Full re-authentication started - silent renewal failed',
-              JSON.stringify({
-                error: error instanceof Error ? error.message : String(error),
-              })
-            );
-            this.oidc.authorize();
-            return of(false);
-          })
-        );
-      })
-    );
-  }
-
-  /**
-   * Single-flight forceRefreshSession. Concurrent callers join the same
-   * in-flight Observable; a fresh refresh starts on the next call once the
-   * previous one has settled.
-   */
-  refresh(reason: string): Observable<LoginResponse> {
-    if (this.inFlightRefresh$) {
-      console.info(
-        '[auth] Refresh requested while another is in flight - joining',
-        JSON.stringify({ reason })
-      );
-      return this.inFlightRefresh$;
-    }
-
-    console.info('[auth] Refresh starting', JSON.stringify({ reason }));
-    this.inFlightRefresh$ = this.oidc.forceRefreshSession().pipe(
-      finalize(() => {
-        this.inFlightRefresh$ = null;
-      }),
-      shareReplay({ bufferSize: 1, refCount: false })
-    );
-    return this.inFlightRefresh$;
-  }
-
-  private runColdStart(): void {
-    const url = new URL(window.location.href);
-    const returnedFromAuthority =
-      url.searchParams.has('code') || url.searchParams.has('error');
-
-    forkJoin({
-      isAuthenticated: this.oidc.isAuthenticated(),
-      refreshToken: this.oidc.getRefreshToken(),
-      accessToken: this.oidc.getAccessToken(),
-    })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(({ isAuthenticated, refreshToken, accessToken }) => {
-        const hasRefreshToken = !!refreshToken;
-        const hasAccessToken = !!accessToken;
-
-        console.info(
-          `[auth] Cold start - ${
-            hasRefreshToken
-              ? 'refresh token present in storage'
-              : 'no refresh token in storage'
-          }`,
-          JSON.stringify({
-            isAuthenticated,
-            hasRefreshToken,
-            hasAccessToken,
-            refreshTokenLength: refreshToken?.length ?? 0,
-            returnedFromAuthority,
-            displayMode: window.matchMedia?.('(display-mode: standalone)')
-              .matches
-              ? 'standalone'
-              : 'browser',
-            storage: snapshotStorageKeys(),
-            oidcStorage: inspectOidcStorage(),
-          })
-        );
-
-        if (returnedFromAuthority) {
-          console.info(
-            '[auth] Cold start - skipping proactive refresh, OIDC library is completing the authority redirect'
-          );
-          return;
-        }
-
-        if (!hasRefreshToken) {
-          // ensureAuthenticated handles the no-refresh-token path (full re-auth)
-          return;
-        }
-
-        console.info(
-          '[auth] Cold start - proactively refreshing access token using stored refresh token'
-        );
-        this.refresh('cold-start')
-          .pipe(
-            tap((result) =>
-              console.info(
-                '[auth] Cold start proactive token refresh completed',
-                JSON.stringify({
-                  isAuthenticated: result?.isAuthenticated ?? false,
-                  hasAccessToken: !!result?.accessToken,
-                })
-              )
-            ),
-            catchError((error: unknown) => {
-              console.error(
-                '[auth] Cold start proactive token refresh failed',
-                JSON.stringify({
-                  error: error instanceof Error ? error.message : String(error),
-                })
-              );
-              return EMPTY;
-            }),
-            takeUntilDestroyed(this.destroyRef)
-          )
-          .subscribe();
-      });
-  }
-
   private runForegroundRefresh(): void {
     if (document.visibilityState !== 'visible') {
       return;
     }
 
-    forkJoin({
-      isAuthenticated: this.oidc.isAuthenticated(),
-      refreshToken: this.oidc.getRefreshToken(),
-      accessToken: this.oidc.getAccessToken(),
-    })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(({ isAuthenticated, refreshToken, accessToken }) => {
-        const hasRefreshToken = !!refreshToken;
-        const hasAccessToken = !!accessToken;
+    this.userManager.getUser().then((user) => {
+      this.user.set(user);
+      const hasRefreshToken = !!user?.refresh_token;
 
-        console.info(
-          `[auth] App returned to foreground - refresh token ${
-            hasRefreshToken ? 'present in storage' : 'not in storage'
-          }`,
-          JSON.stringify({
-            isAuthenticated,
-            hasRefreshToken,
-            hasAccessToken,
-            refreshTokenLength: refreshToken?.length ?? 0,
-            // Two failure modes collapse to "no refresh token" here, so we
-            // capture both the surviving key names and the OIDC blob's
-            // internals to tell them apart: iOS eviction drops the whole blob
-            // key, whereas a library-side session reset keeps the key but
-            // empties authnResult. See inspectOidcStorage below.
-            storage: snapshotStorageKeys(),
-            oidcStorage: inspectOidcStorage(),
-          })
+      console.info(
+        `[auth] App returned to foreground - refresh token ${
+          hasRefreshToken ? 'present in storage' : 'not in storage'
+        }`,
+        JSON.stringify({
+          isAuthenticated: !!user && !user.expired,
+          hasRefreshToken,
+          hasAccessToken: !!user?.access_token,
+          refreshTokenLength: user?.refresh_token?.length ?? 0,
+          storage: snapshotStorageKeys(),
+          oidcStorage: inspectOidcStorage(),
+        })
+      );
+
+      if (!hasRefreshToken) {
+        console.warn(
+          '[auth] App returned to foreground with no refresh token in storage - silent renewal impossible, full re-authentication will be required'
         );
+        return;
+      }
 
-        if (!hasRefreshToken) {
-          console.warn(
-            '[auth] App returned to foreground with no refresh token in storage - silent renewal impossible, full re-authentication will be required'
-          );
-          return;
-        }
-
-        console.info(
-          '[auth] Proactively refreshing access token using stored refresh token'
-        );
-        this.refresh('foreground')
-          .pipe(
-            tap((result) =>
-              console.info(
-                '[auth] Proactive foreground token refresh completed',
-                JSON.stringify({
-                  isAuthenticated: result?.isAuthenticated ?? false,
-                  hasAccessToken: !!result?.accessToken,
-                })
-              )
-            ),
-            catchError((error: unknown) => {
-              console.error(
-                '[auth] Proactive foreground token refresh failed',
-                JSON.stringify({
-                  error: error instanceof Error ? error.message : String(error),
-                })
-              );
-              return EMPTY;
-            }),
-            takeUntilDestroyed(this.destroyRef)
-          )
-          .subscribe();
-      });
+      console.info(
+        '[auth] Proactively refreshing access token using stored refresh token'
+      );
+      this.refresh('foreground')
+        .pipe(
+          catchError(() => EMPTY),
+          takeUntilDestroyed(this.destroyRef)
+        )
+        .subscribe();
+    });
   }
+}
 
-  private showError(error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    this.notifications.error('An error occurred. ' + message);
-  }
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function displayMode(): 'standalone' | 'browser' {
+  return window.matchMedia?.('(display-mode: standalone)').matches
+    ? 'standalone'
+    : 'browser';
+}
+
+function describeUser(user: User | null): Record<string, unknown> {
+  return {
+    isAuthenticated: !!user && !user.expired,
+    hasAccessToken: !!user?.access_token,
+    hasRefreshToken: !!user?.refresh_token,
+    refreshTokenLength: user?.refresh_token?.length ?? 0,
+    expiresAt: user?.expires_at ?? null,
+  };
 }
 
 /**
  * Snapshots which keys currently live in local/session storage (names only,
- * never values). The presence of the OIDC blob key here is the first
- * discriminator between the two ways a session goes missing: if iOS reclaims
- * storage for a backgrounded PWA the blob key is absent entirely, whereas a
- * library-side reset leaves the key in place (with an emptied payload, which
- * inspectOidcStorage drills into).
+ * never values). The presence of the oidc-client-ts user key is the first
+ * discriminator between the two ways a session goes missing: iOS reclaiming
+ * storage drops the key entirely, whereas a deliberate removeUser leaves no
+ * `oidc.user:*` key but other keys may remain.
  */
 function snapshotStorageKeys(): {
   localStorageKeys: string[];
@@ -348,56 +388,23 @@ function snapshotStorageKeys(): {
 }
 
 /**
- * Top-level slots angular-auth-oidc-client keeps inside its single storage
- * blob. The blob is one localStorage entry named `<configId>-<clientId>`
- * (e.g. "0-<clientId>") whose value is a JSON object keyed by these slots.
- * authnResult is the one that actually holds the access/refresh/id tokens.
- */
-const OIDC_STORAGE_SLOTS = [
-  'authnResult',
-  'authzData',
-  'access_token_expires_at',
-  'authWellKnownEndPoints',
-  'userData',
-  'authNonce',
-  'codeVerifier',
-  'session_state',
-  'jwtKeys',
-] as const;
-
-/**
- * Proves *why* a refresh token is missing by inspecting the OIDC storage blob
- * itself - structure only, never the secret values.
+ * Inspects the oidc-client-ts user blob - structure only, never secret values.
+ * The library persists the session as a single localStorage entry keyed
+ * `oidc.user:<authority>:<client_id>` whose value is the serialized User
+ * (access_token, id_token, refresh_token, profile, expires_at, ...).
  *
- * angular-auth-oidc-client persists the whole session as a single
- * localStorage entry (`<configId>-<clientId>`) whose value is a JSON object;
- * the tokens live under its `authnResult` slot. A bare "no refresh token in
- * storage" reading cannot tell these two root causes apart, but the blob's
- * shape can:
- *
- *  - iOS reclaimed the PWA's storage  -> `blobPresent` is false (the entry,
- *    and usually every other localStorage key, is gone).
- *  - the library reset the session via resetAuthDataInStore() on a failed
- *    refresh/validation or logoff -> `blobPresent` stays true while
- *    `authnResult.present` flips to false (or its token lengths drop to 0)
- *    and sibling slots such as authWellKnownEndPoints survive.
- *
- * Reports the blob key, byte length, top-level slot names, and the
- * authnResult field names plus token string lengths - enough to fingerprint
- * the failure without ever emitting a token.
+ * Because nothing in this app wipes the user automatically, a missing blob now
+ * unambiguously means either we called removeUser or iOS evicted storage -
+ * reported here alongside token lengths so the cause is visible in the logs.
  */
 function inspectOidcStorage(): {
   blobPresent: boolean;
   blobKey: string | null;
   blobByteLength: number;
   topLevelKeys: string[];
-  authnResult: {
-    present: boolean;
-    fieldNames: string[];
-    accessTokenLength: number;
-    refreshTokenLength: number;
-    idTokenLength: number;
-  };
+  accessTokenLength: number;
+  refreshTokenLength: number;
+  idTokenLength: number;
 } {
   let blobKey: string | null = null;
   let blobRaw = '';
@@ -405,47 +412,28 @@ function inspectOidcStorage(): {
 
   try {
     for (const key of Object.keys(localStorage)) {
+      if (!key.startsWith('oidc.user:')) {
+        continue;
+      }
       const raw = localStorage.getItem(key);
       if (!raw) {
         continue;
       }
-      let candidate: unknown;
+      blobKey = key;
+      blobRaw = raw;
       try {
-        candidate = JSON.parse(raw);
+        parsed = JSON.parse(raw) as Record<string, unknown>;
       } catch {
-        continue;
+        parsed = null;
       }
-      if (
-        candidate &&
-        typeof candidate === 'object' &&
-        OIDC_STORAGE_SLOTS.some((slot) => slot in (candidate as object))
-      ) {
-        blobKey = key;
-        blobRaw = raw;
-        parsed = candidate as Record<string, unknown>;
-        break;
-      }
+      break;
     }
   } catch {
     // localStorage can throw entirely under locked-down iOS privacy modes.
   }
 
-  // authnResult is normally a nested object, but defend against the library
-  // storing it as a JSON string in some versions.
-  const rawAuthnResult = parsed?.['authnResult'];
-  let authnResult: Record<string, unknown> | null = null;
-  if (rawAuthnResult && typeof rawAuthnResult === 'object') {
-    authnResult = rawAuthnResult as Record<string, unknown>;
-  } else if (typeof rawAuthnResult === 'string') {
-    try {
-      authnResult = JSON.parse(rawAuthnResult) as Record<string, unknown>;
-    } catch {
-      authnResult = null;
-    }
-  }
-
   const tokenLength = (name: string): number => {
-    const value = authnResult?.[name];
+    const value = parsed?.[name];
     return typeof value === 'string' ? value.length : 0;
   };
 
@@ -454,12 +442,8 @@ function inspectOidcStorage(): {
     blobKey,
     blobByteLength: blobRaw.length,
     topLevelKeys: parsed ? Object.keys(parsed) : [],
-    authnResult: {
-      present: authnResult !== null,
-      fieldNames: authnResult ? Object.keys(authnResult) : [],
-      accessTokenLength: tokenLength('access_token'),
-      refreshTokenLength: tokenLength('refresh_token'),
-      idTokenLength: tokenLength('id_token'),
-    },
+    accessTokenLength: tokenLength('access_token'),
+    refreshTokenLength: tokenLength('refresh_token'),
+    idTokenLength: tokenLength('id_token'),
   };
 }

@@ -18,8 +18,9 @@ export function initFaro(clientLogUrl: string, clientAppName: string): void {
       disabledLevels: [],
     },
     // The "about to redirect to Entra" log fires synchronously right before
-    // angular-auth-oidc-client reassigns window.location. Faro's default
-    // 250 ms batch timer can miss that window, so collapse it - each log
+    // AuthService.login() hands off to UserManager.signinRedirect (which
+    // navigates away). Faro's default 250 ms batch timer can miss that window,
+    // so collapse it - each log
     // still batches across the same synchronous tick (multiple sync logs
     // share one request), but the request actually flights before the
     // cross-origin navigation begins. Combined with FetchTransport's
@@ -53,5 +54,17 @@ function installFlushOnHide(): void {
     if (document.visibilityState === 'hidden') {
       flush('visibilitychange');
     }
+  });
+}
+
+/**
+ * Enqueues a marker log right before we hand control to a full-page redirect
+ * (signinRedirect/signoutRedirect). With sendTimeout: 0 the queued logs flight
+ * on the next macrotask - before the asynchronous discovery call inside the
+ * redirect resolves and navigates away - so the pre-redirect trace survives.
+ */
+export function flushFaro(): void {
+  faro?.api?.pushLog(['[faro] flush before redirect'], {
+    level: LogLevel.INFO,
   });
 }
