@@ -1,4 +1,4 @@
-FROM docker.io/library/node:25 AS build
+FROM docker.io/library/node:26 AS build
 
 WORKDIR /workspace
 
