@@ -8,7 +8,7 @@ COPY . .
 RUN npm run build
 
 
-FROM docker.io/library/nginx:1.31.1
+FROM docker.io/library/nginx:1.31.2
 
 RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/*
 
