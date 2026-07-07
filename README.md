@@ -43,6 +43,27 @@ All host-exposed ports use the **xx50–xx59** range for their last two digits t
 | 8151 | Traefik (admin)      | Test pod                            |
 | 8152 | Spring Actuator      | Local dev & test                    |
 
+## Development Environment
+
+System tooling (JDK 21, Maven, Node, jq, kubectl, helm, azure-cli) is provided by
+a Nix flake dev shell:
+
+```bash
+nix develop          # enter the dev shell manually
+# or, with direnv installed, `direnv allow` once and it loads automatically
+```
+
+Then install the per-project dependencies:
+
+```bash
+scripts/install_dependencies.sh
+```
+
+**Podman** is a distro-level prerequisite and is not managed by the flake
+(rootless Podman needs setuid `newuidmap`/`newgidmap` helpers the Nix store
+cannot provide). On WSL, enable `systemd=true` in `/etc/wsl.conf` and install it
+via your distro, e.g. `apt install podman`.
+
 ## Quick Start
 
 ```bash
