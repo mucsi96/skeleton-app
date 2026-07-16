@@ -1,5 +1,10 @@
 import { test, expect } from '../fixtures';
 
+test('displays app title in browser tab', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveTitle('Hello');
+});
+
 test('displays app title in header', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('link', { name: 'Skeleton App' })).toBeVisible();

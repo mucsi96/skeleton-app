@@ -8,6 +8,6 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./home/home.component').then((m) => m.HomeComponent),
     canActivate: [authGuard],
-    title: '',
+    title: 'Hello',
   },
 ];
