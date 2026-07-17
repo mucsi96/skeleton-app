@@ -19,5 +19,12 @@ import { AuthService } from './auth.service';
   styleUrl: './app.component.css',
 })
 export class AppComponent {
-  isAuthenticated = inject(AuthService).isAuthenticated;
+  private readonly authService = inject(AuthService);
+
+  isAuthenticated = this.authService.isAuthenticated;
+  authError = this.authService.authError;
+
+  retryLogin(): void {
+    this.authService.login();
+  }
 }
