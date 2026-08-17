@@ -21,42 +21,32 @@ podman kube down "$PROJECT_DIR/test/test-pod.yaml" 2>/dev/null || true
 echo "Starting pod..."
 podman kube play "$PROJECT_DIR/test/test-pod.yaml"
 
-dump_logs() {
-  for c in $(podman pod inspect "$POD_NAME" --format '{{range .Containers}}{{.Name}} {{end}}'); do
-    echo "$c" | grep -q "infra" && continue
-    echo "=== $c ==="
-    podman logs "$c" 2>&1 | tail -20
-  done
-}
+echo "Waiting for all containers to become healthy..."
+CONTAINERS=$(podman pod inspect "$POD_NAME" --format '{{range .Containers}}{{.Name}} {{end}}')
 
-# Poll the services directly instead of Podman's .State.Health.Status,
-# which never reaches "healthy" under Podman 5 on GitHub runners.
-# Must cover every container in test/test-pod.yaml (ports included).
-CHECKS=(
-  "traefik|curl -fsS --max-time 5 http://localhost:8151/ping"
-  "db|podman exec ${POD_NAME}-db pg_isready -U postgres"
-  "mock-anthropic|curl -fsS --max-time 5 http://localhost:3050/health"
-  "mock-oauth2|curl -fsS --max-time 5 http://localhost:8050/health"
-  "server|curl -fsS --max-time 5 http://localhost:8150/api/environment"
-  "client|curl -fsS --max-time 5 http://localhost:8150/"
-)
-
-echo "Waiting for all services to respond..."
-for check in "${CHECKS[@]}"; do
-  name="${check%%|*}"
-  probe="${check#*|}"
-  echo "  Waiting for $name..."
+for container in $CONTAINERS; do
+  if echo "$container" | grep -q "infra"; then
+    continue
+  fi
+  echo "  Waiting for $container..."
   ELAPSED=0
-  until $probe > /dev/null 2>&1; do
+  while true; do
     if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
-      echo "Timeout waiting for $name"
-      dump_logs
+      echo "Timeout waiting for $container to become healthy"
+      for c in $CONTAINERS; do
+        echo "=== $c ==="
+        podman logs "$c" 2>&1 | tail -20
+      done
       exit 1
+    fi
+    STATUS=$(podman inspect --format='{{.State.Health.Status}}' "$container" 2>/dev/null || echo "missing")
+    if [ "$STATUS" = "healthy" ]; then
+      echo "  $container is healthy"
+      break
     fi
     sleep 2
     ELAPSED=$((ELAPSED + 2))
   done
-  echo "  $name is ready"
 done
 
 echo "All services are ready!"
