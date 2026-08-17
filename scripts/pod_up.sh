@@ -31,22 +31,23 @@ dump_logs() {
 
 # Poll the services directly instead of Podman's .State.Health.Status,
 # which never reaches "healthy" under Podman 5 on GitHub runners.
+# Must cover every container in test/test-pod.yaml (ports included).
 CHECKS=(
-  "traefik|curl -fsS http://localhost:8151/ping"
+  "traefik|curl -fsS --max-time 5 http://localhost:8151/ping"
   "db|podman exec ${POD_NAME}-db pg_isready -U postgres"
-  "mock-anthropic|curl -fsS http://localhost:3050/health"
-  "mock-oauth2|curl -fsS http://localhost:8050/health"
-  "server|curl -fsS http://localhost:8150/api/environment"
-  "client|curl -fsS http://localhost:8150/"
+  "mock-anthropic|curl -fsS --max-time 5 http://localhost:3050/health"
+  "mock-oauth2|curl -fsS --max-time 5 http://localhost:8050/health"
+  "server|curl -fsS --max-time 5 http://localhost:8150/api/environment"
+  "client|curl -fsS --max-time 5 http://localhost:8150/"
 )
 
 echo "Waiting for all services to respond..."
 for check in "${CHECKS[@]}"; do
   name="${check%%|*}"
-  command="${check#*|}"
+  probe="${check#*|}"
   echo "  Waiting for $name..."
   ELAPSED=0
-  until $command > /dev/null 2>&1; do
+  until $probe > /dev/null 2>&1; do
     if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
       echo "Timeout waiting for $name"
       dump_logs

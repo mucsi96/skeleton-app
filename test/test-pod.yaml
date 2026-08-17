@@ -53,9 +53,8 @@ spec:
         - name: PORT
           value: "3050"
       livenessProbe:
-        httpGet:
-          path: /health
-          port: 3050
+        exec:
+          command: ["curl", "-fsS", "-m", "2", "http://localhost:3050/health"]
         initialDelaySeconds: 2
         periodSeconds: 2
         failureThreshold: 5
@@ -85,9 +84,8 @@ spec:
         - name: AUD
           value: mock-api-client-id
       livenessProbe:
-        httpGet:
-          path: /health
-          port: 8050
+        exec:
+          command: ["curl", "-fsS", "-m", "2", "http://localhost:8050/health"]
         initialDelaySeconds: 2
         periodSeconds: 2
         failureThreshold: 5
@@ -114,9 +112,8 @@ spec:
         - name: MOCK_OAUTH2_SERVER_URI
           value: http://localhost:8050
       livenessProbe:
-        httpGet:
-          path: /actuator/health/readiness
-          port: 8152
+        exec:
+          command: ["curl", "-fsS", "-m", "2", "http://localhost:8152/actuator/health/readiness"]
         initialDelaySeconds: 16
         periodSeconds: 2
         failureThreshold: 10
@@ -124,9 +121,8 @@ spec:
     - name: client
       image: localhost/skeleton-app-client:test
       livenessProbe:
-        httpGet:
-          path: /
-          port: 8000
+        exec:
+          command: ["wget", "-q", "-T", "2", "-t", "1", "--spider", "http://localhost:8000/"]
         initialDelaySeconds: 5
         periodSeconds: 2
         failureThreshold: 10
