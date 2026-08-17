@@ -1,3 +1,6 @@
+# Liveness probes use exec (curl/wget) rather than httpGet: Podman 5's
+# httpGet probe translation is broken (health stays "starting" forever),
+# while exec probes report healthy correctly.
 apiVersion: v1
 kind: Pod
 metadata:
