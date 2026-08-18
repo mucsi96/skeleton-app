@@ -1,6 +1,3 @@
-# Liveness probes use exec (curl/wget) rather than httpGet: Podman 5's
-# httpGet probe translation is broken (health stays "starting" forever),
-# while exec probes report healthy correctly.
 apiVersion: v1
 kind: Pod
 metadata:
@@ -56,8 +53,9 @@ spec:
         - name: PORT
           value: "3050"
       livenessProbe:
-        exec:
-          command: ["curl", "-fsS", "-m", "2", "http://localhost:3050/health"]
+        httpGet:
+          path: /health
+          port: 3050
         initialDelaySeconds: 2
         periodSeconds: 2
         failureThreshold: 5
@@ -87,8 +85,9 @@ spec:
         - name: AUD
           value: mock-api-client-id
       livenessProbe:
-        exec:
-          command: ["curl", "-fsS", "-m", "2", "http://localhost:8050/health"]
+        httpGet:
+          path: /health
+          port: 8050
         initialDelaySeconds: 2
         periodSeconds: 2
         failureThreshold: 5
@@ -115,8 +114,9 @@ spec:
         - name: MOCK_OAUTH2_SERVER_URI
           value: http://localhost:8050
       livenessProbe:
-        exec:
-          command: ["curl", "-fsS", "-m", "2", "http://localhost:8152/actuator/health/readiness"]
+        httpGet:
+          path: /actuator/health/readiness
+          port: 8152
         initialDelaySeconds: 16
         periodSeconds: 2
         failureThreshold: 10
@@ -124,8 +124,9 @@ spec:
     - name: client
       image: localhost/skeleton-app-client:test
       livenessProbe:
-        exec:
-          command: ["wget", "-q", "-T", "2", "-t", "1", "--spider", "http://localhost:8000/"]
+        httpGet:
+          path: /
+          port: 8000
         initialDelaySeconds: 5
         periodSeconds: 2
         failureThreshold: 10
