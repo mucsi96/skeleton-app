@@ -33,6 +33,9 @@ clientAppChartVersion=$(helm search repo mucsi96/client-app --output json | jq -
 
 echo "Deploying server: $DOCKERHUB_USERNAME/skeleton-app-server:$serverLatestTag using spring-app chart $springAppChartVersion"
 
+# CPU limits are intentionally omitted for both services (limits.cpu=null
+# clears the chart default): on a single-user node they only throttle
+# startup; memory limits are the ones that matter.
 helm upgrade $SERVER_RELEASE_NAME mucsi96/spring-app \
     --install \
     --version $springAppChartVersion \
@@ -44,10 +47,10 @@ helm upgrade $SERVER_RELEASE_NAME mucsi96/spring-app \
     --set serviceAccountName=hello-api-workload-identity \
     --set env.AZURE_KEYVAULT_ENDPOINT=$AZURE_KEYVAULT_ENDPOINT \
     --set env.CLIENT_APP_NAME=$CLIENT_RELEASE_NAME \
-    --set resources.requests.memory=512Mi \
-    --set resources.requests.cpu=100m \
-    --set resources.limits.memory=1Gi \
-    --set resources.limits.cpu=500m \
+    --set resources.requests.memory=448Mi \
+    --set resources.requests.cpu=25m \
+    --set resources.limits.memory=768Mi \
+    --set resources.limits.cpu=null \
     --wait
 
 echo "Deploying client: $DOCKERHUB_USERNAME/skeleton-app-client:$clientLatestTag using client-app chart $clientAppChartVersion"
@@ -58,4 +61,7 @@ helm upgrade $CLIENT_RELEASE_NAME mucsi96/client-app \
     --set image=$DOCKERHUB_USERNAME/skeleton-app-client:$clientLatestTag \
     --set host=$HOSTNAME \
     --set entryPoint=web \
+    --set resources.requests.memory=16Mi \
+    --set resources.requests.cpu=5m \
+    --set resources.limits.memory=32Mi \
     --wait
