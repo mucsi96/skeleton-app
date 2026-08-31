@@ -33,6 +33,9 @@ clientAppChartVersion=$(helm search repo mucsi96/client-app --output json | jq -
 
 echo "Deploying server: $DOCKERHUB_USERNAME/skeleton-app-server:$serverLatestTag using spring-app chart $springAppChartVersion"
 
+# CPU limits are intentionally omitted for both services (limits.cpu=null
+# clears the chart default): on a single-user node they only throttle
+# startup; memory limits are the ones that matter.
 helm upgrade $SERVER_RELEASE_NAME mucsi96/spring-app \
     --install \
     --version $springAppChartVersion \
