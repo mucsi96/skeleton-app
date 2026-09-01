@@ -180,12 +180,19 @@
                    reads has to resolve, and the Key Vault property source has
                    to be off so the build never reaches out to Azure. The
                    actuator port is a build-time-only stand-in: it is not baked
-                   into the image, but the conditions it makes match are (here,
-                   whether the management endpoints get their own context), so
-                   it has to make the same conditions match as the real value
-                   does at runtime. A new required environment placeholder read
-                   by a condition means adding it here too - the build fails
-                   with "Could not resolve placeholder" when one is missing.
+                   into the image, but the conditions it makes match are, so it
+                   has to make the same conditions match as the real value does
+                   at runtime. Here that condition is whether the management
+                   endpoints get a context of their own, which is decided by
+                   the actuator port differing from the server port - not by
+                   either number. So this value never has to equal the one
+                   test-pod.yaml or the Helm release sets; it only has to stay
+                   different from the server port, as they are. Running the two
+                   on one port at runtime would contradict what the image was
+                   built for, and silently: the wiring is already fixed. A new
+                   required environment placeholder read by a condition means
+                   adding it here too - the build fails with "Could not resolve
+                   placeholder" when one is missing.
                    Placeholders only read while creating beans, such as
                    ${db-url}, are resolved at runtime and do not belong
                    here. -->
