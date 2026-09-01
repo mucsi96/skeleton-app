@@ -180,16 +180,37 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push server image
+      - name: Resolve server image tag
+        if: steps.get_next_version.outputs.hasNextVersion == 'true'
+        run: |
+          echo "SERVER_IMAGE=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }}" >> "$GITHUB_ENV"
+
+      # Built, then checked, then pushed - not build-and-push - so a prod
+      # executable that cannot start never reaches Docker Hub.
+      - name: Build server image
         if: steps.get_next_version.outputs.hasNextVersion == 'true'
         uses: docker/build-push-action@v6
         with:
           context: server
-          push: true
+          load: true
           build-args: SPRING_PROFILE=prod
-          tags: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/skeleton-app-server:${{ steps.get_next_version.outputs.version }}
+          tags: ${{ env.SERVER_IMAGE }}
           cache-from: type=gha,scope=server-prod
           cache-to: type=gha,mode=max,scope=server-prod
+
+      # The profile is baked in at build time, so this is a different
+      # executable from the one test-e2e exercised, taking code paths - the Key
+      # Vault property source above all - that no test covers. This cannot
+      # catch a missing reflection hint, but it does catch a binary that does
+      # not start, before the image is published and deploy picks it up.
+      - name: Check the server executable runs
+        if: steps.get_next_version.outputs.hasNextVersion == 'true'
+        run: |
+          timeout 60 docker run --rm "$SERVER_IMAGE" -XX:PrintFlags= > /dev/null
+
+      - name: Push server image
+        if: steps.get_next_version.outputs.hasNextVersion == 'true'
+        run: docker push "$SERVER_IMAGE"
 
       # Tag the commit this image was actually built from. Without
       # target_commitish the release action tags whatever main points at when

@@ -5,6 +5,9 @@
 #   SecurityException: ...'s signer information does not match signer
 #   information of other classes in the same package
 # Disabling the jar signature algorithms makes the builder treat those jars as
-# unsigned. This file is only ever passed to the native-image builder JVM (see
-# native-maven-plugin in pom.xml); it is not part of the application.
+# unsigned. Note what that means: signatures on those jars are not verified at
+# all during the build, rather than the signer mismatch alone being tolerated.
+# This file is only ever passed to the native-image builder JVM (see
+# native-maven-plugin in pom.xml); it is not part of the application, and the
+# jars it applies to are the ones Maven already resolved and checksummed.
 jdk.jar.disabledAlgorithms=MD2, MD5, RSA, DSA
