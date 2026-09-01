@@ -106,9 +106,14 @@ jobs:
       - name: Install Playwright browsers
         working-directory: test
         run: npx playwright install chromium --with-deps
+      # Only the image tarballs. Without the pattern this also pulls the
+      # .dockerbuild build records docker/build-push-action uploads on its own,
+      # which this job has no use for and which failed the whole step when one
+      # of them would not download.
       - name: Download images
         uses: actions/download-artifact@v4
         with:
+          pattern: "*-image"
           path: /tmp
           merge-multiple: true
       - name: Load images into Podman
