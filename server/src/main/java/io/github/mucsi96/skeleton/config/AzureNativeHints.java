@@ -10,6 +10,7 @@ import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.core.type.filter.AssignableTypeFilter;
 
 import com.azure.core.exception.HttpResponseException;
+import com.azure.core.util.ExpandableStringEnum;
 import com.azure.json.JsonSerializable;
 import com.azure.xml.XmlSerializable;
 
@@ -22,8 +23,10 @@ import com.azure.xml.XmlSerializable;
  * reflectively and returns {@code null} when it cannot. In a native image
  * without a hint that turns every constant of the class into {@code null}, and
  * the first use fails with a {@link NullPointerException} far from the cause.
- * Without the first of the two below, building any Azure client fails at
- * startup.
+ * Two of azure-identity's subclasses ship no metadata, and without them
+ * building any Azure client fails at startup - but naming those two would
+ * leave the next one to be rediscovered the same painful way, so they are
+ * scanned for like everything else here.
  *
  * The scan covers a second, quieter gap. azure-core picks how to read a
  * response body by asking the model class whether it declares the
@@ -49,12 +52,8 @@ public class AzureNativeHints {
 
     private static final String AZURE_PACKAGE = "com.azure";
 
-    private static final String[] EXPANDABLE_STRING_ENUMS = {
-        "com.azure.identity.AzureIdentityEnvVars",
-        "com.azure.identity.implementation.RegionalAuthority"
-    };
-
-    private static final Class<?>[] SERIALIZABLE_TYPES = {
+    private static final Class<?>[] REFLECTED_TYPES = {
+        ExpandableStringEnum.class,
         XmlSerializable.class,
         JsonSerializable.class,
         HttpResponseException.class
@@ -62,15 +61,10 @@ public class AzureNativeHints {
 
     @Override
     public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-      for (String type : EXPANDABLE_STRING_ENUMS) {
-        hints.reflection().registerTypeIfPresent(classLoader, type,
-            MemberCategory.INVOKE_DECLARED_CONSTRUCTORS);
-      }
-
       final ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(
           false);
 
-      for (Class<?> type : SERIALIZABLE_TYPES) {
+      for (Class<?> type : REFLECTED_TYPES) {
         scanner.addIncludeFilter(new AssignableTypeFilter(type));
       }
 
