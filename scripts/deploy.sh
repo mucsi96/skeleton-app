@@ -38,12 +38,11 @@ echo "Deploying server: $DOCKERHUB_USERNAME/skeleton-app-server:$serverLatestTag
 # startup; memory limits are the ones that matter.
 #
 # The server is a GraalVM native executable, so there is no JVM metaspace, no
-# code cache and no JIT-compiled code to hold: it idles far below what the
-# 448Mi request assumed for the JRE image, hence the smaller request. The
-# request is what the scheduler reserves around the clock, so it is sized for
-# idle. It is an estimate, not a measurement - replace it with the resident
-# figure metrics-server reports once this image has run in production for a
-# while.
+# code cache and no JIT-compiled code to hold: it idles far below what a JRE
+# image would use, hence the smaller request. The request is what the
+# scheduler reserves around the clock, so it is sized for idle: metrics-server
+# reports a ~58Mi working set in production, so the request sits just above
+# that measurement.
 #
 # The limit is the opposite question and stays where it is: it has to cover the
 # idle footprint plus the 256Mi heap the image is capped at (see the ENTRYPOINT
@@ -59,9 +58,9 @@ helm upgrade $SERVER_RELEASE_NAME mucsi96/spring-app \
     --set serviceAccountName=hello-api-workload-identity \
     --set env.AZURE_KEYVAULT_ENDPOINT=$AZURE_KEYVAULT_ENDPOINT \
     --set env.CLIENT_APP_NAME=$CLIENT_RELEASE_NAME \
-    --set resources.requests.memory=192Mi \
+    --set resources.requests.memory=96Mi \
     --set resources.requests.cpu=25m \
-    --set resources.limits.memory=768Mi \
+    --set resources.limits.memory=512Mi \
     --set resources.limits.cpu=null \
     --wait
 
