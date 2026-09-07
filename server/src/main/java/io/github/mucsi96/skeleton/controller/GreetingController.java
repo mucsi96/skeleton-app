@@ -14,7 +14,7 @@ public class GreetingController {
   private final GreetingService greetingService;
 
   @GetMapping("/greeting")
-  @PreAuthorize("hasAuthority('APPROLE_GreetingReader') and hasAuthority('SCOPE_readGreetings')")
+  @PreAuthorize("hasAuthority('APPROLE_readGreetings')")
   public GreetingResponse getGreeting() {
     return greetingService.getGreeting();
   }
