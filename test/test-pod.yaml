@@ -79,9 +79,9 @@ spec:
         - name: PREFERRED_USERNAME
           value: test-user@example.com
         - name: ROLES
-          value: GreetingReader
+          value: readGreetings,createGreeting
         - name: SCP
-          value: readGreetings createGreeting
+          value: api-access
         - name: AUD
           value: mock-api-client-id
       livenessProbe:
