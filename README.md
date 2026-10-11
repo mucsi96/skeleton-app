@@ -37,27 +37,31 @@ the server on a JVM for local development is unaffected - `mvn spring-boot:run
 
 ## Image publishing and deployment
 
-After tests pass, main pushes and manual `Pipeline` runs publish both images to
+After tests pass, main pushes and manual `Pipeline` runs publish changed components to
 GHCR with `GITHUB_TOKEN` and job-scoped `packages: write` permission, following
-`observatory-app`:
+`observatory-app` for registry authentication while retaining numbered versions:
 
 ```text
-ghcr.io/mucsi96/skeleton-app-server:sha-<full commit SHA>
-ghcr.io/mucsi96/skeleton-app-client:sha-<full commit SHA>
+ghcr.io/mucsi96/skeleton-app-server:<server version>
+ghcr.io/mucsi96/skeleton-app-client:<client version>
 ```
 
-Both images are published for each run, including workflow-only changes.
-Component version detection controls GitHub releases only. Publication and
-rollout are serialized, and deployment uses the same commit's image pair.
+Each component publishes only when `get_next_version.outputs.hasNextVersion`
+is `true`, using `get_next_version.outputs.version` as its image tag. Unchanged
+components retain the version of their last reachable `server-N` / `client-N`
+release. Both resolved image references are passed directly to deployment.
+Publication and rollout are serialized. The GHCR source label added to each
+production Dockerfile triggers both first publications through normal version
+detection; subsequent workflow-only changes skip image publication.
 Make both GHCR packages public after their first publication, then rerun the
 deploy job so Kubernetes can pull them anonymously.
 
-For manual deployment, provide explicit immutable images:
+For manual deployment, provide explicit versioned images:
 
 ```bash
 AZURE_KEYVAULT_NAME=p07-hello \
-SERVER_IMAGE=ghcr.io/mucsi96/skeleton-app-server:sha-<full-commit> \
-CLIENT_IMAGE=ghcr.io/mucsi96/skeleton-app-client:sha-<full-commit> \
+SERVER_IMAGE=ghcr.io/mucsi96/skeleton-app-server:42 \
+CLIENT_IMAGE=ghcr.io/mucsi96/skeleton-app-client:17 \
 bash scripts/deploy.sh
 ```
 
