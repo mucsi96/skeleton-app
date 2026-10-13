@@ -31,7 +31,7 @@ podman build --build-arg SPRING_PROFILE=prod -t skeleton-app-server:prod server 
 ```
 
 `SPRING_PROFILES_ACTIVE` is not read at runtime; the pipeline builds the test
-image for the e2e job and the prod image when publishing to Docker Hub. Running
+image for the e2e job and the prod image when publishing to GHCR. Running
 the server on a JVM for local development is unaffected - `mvn spring-boot:run
 -Dspring-boot.run.profiles=local` still selects the profile the usual way.
 
