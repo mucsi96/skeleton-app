@@ -268,11 +268,10 @@ The action always returns `version` and `tag`, including the current reachable
 release when unchanged; `hasNextVersion` alone controls publication. Forward its
 version output directly to deployment without a consumer-side tag lookup.
 The workflow serializes publication and rollout; require numbered GHCR tags or
-digests. Merge the action change linked in README before the application MR.
+digests.
 The production Dockerfiles carry GHCR source labels, triggering both initial
 publications through normal component version detection.
-Both packages must be public for anonymous Kubernetes pulls. See README for
-manual deployment inputs.
+Both packages must be public for anonymous Kubernetes pulls.
 
 ### Environment Config
 - Server exposes `/api/environment` endpoint
