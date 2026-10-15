@@ -36,6 +36,10 @@ helm repo add mucsi96 https://mucsi96.github.io/k8s-helm-charts --force-update
 springAppChartVersion=$(helm search repo mucsi96/spring-app --output json | jq -r '.[0].version')
 clientAppChartVersion=$(helm search repo mucsi96/client-app --output json | jq -r '.[0].version')
 
+helm status hello-oauth2-proxy --namespace hello >/dev/null
+helm show values mucsi96/spring-app --version "$springAppChartVersion" | grep -q '^routeMiddlewares:'
+helm show values mucsi96/client-app --version "$clientAppChartVersion" | grep -q '^routeMiddlewares:'
+
 echo "Deploying server: $SERVER_IMAGE using spring-app chart $springAppChartVersion"
 
 # CPU limits are intentionally omitted for both services (limits.cpu=null
@@ -59,10 +63,12 @@ helm upgrade $SERVER_RELEASE_NAME mucsi96/spring-app \
     --set entryPoint=web \
     --set host=$HOSTNAME \
     --set basePath=/api \
+    --set 'routeMiddlewares[0]=hello-oauth2-proxy-api' \
     --set clientId=$API_CLIENT_ID \
     --set serviceAccountName=hello-api-workload-identity \
     --set env.AZURE_KEYVAULT_ENDPOINT=$AZURE_KEYVAULT_ENDPOINT \
     --set env.CLIENT_APP_NAME=$CLIENT_RELEASE_NAME \
+    --set-string env.BROWSER_ORIGIN="https://$HOSTNAME" \
     --set resources.requests.memory=64Mi \
     --set resources.requests.cpu=25m \
     --set resources.limits.memory=256Mi \
@@ -77,6 +83,7 @@ helm upgrade $CLIENT_RELEASE_NAME mucsi96/client-app \
     --set-string image="$CLIENT_IMAGE" \
     --set host=$HOSTNAME \
     --set entryPoint=web \
+    --set 'routeMiddlewares[0]=hello-oauth2-proxy-document' \
     --set resources.requests.memory=16Mi \
     --set resources.requests.cpu=5m \
     --set resources.limits.memory=32Mi \

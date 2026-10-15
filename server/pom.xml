@@ -199,6 +199,7 @@
               <systemPropertyVariables>
                 <spring.cloud.azure.keyvault.secret.property-source-enabled>false</spring.cloud.azure.keyvault.secret.property-source-enabled>
                 <SPRING_ACTUATOR_PORT>8152</SPRING_ACTUATOR_PORT>
+                <BROWSER_ORIGIN>https://build.example.test</BROWSER_ORIGIN>
               </systemPropertyVariables>
             </configuration>
           </execution>

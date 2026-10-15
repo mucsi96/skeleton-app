@@ -4,6 +4,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { UserProfileService } from '../user-profile.service';
 import { MatMenuModule } from '@angular/material/menu';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-header',
@@ -17,5 +18,6 @@ import { MatMenuModule } from '@angular/material/menu';
   styleUrl: './header.component.css',
 })
 export class HeaderComponent {
+  readonly auth = inject(AuthService);
   profile = inject(UserProfileService).profile;
 }

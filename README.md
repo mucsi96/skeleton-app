@@ -8,7 +8,7 @@ Reference application for all future projects. Based on patterns from [learn-lan
 - **Deployment** - Docker multi-stage builds with Traefik reverse proxy
 - **Client** - Angular 21 with Material UI dark theme
 - **Server** - Spring Boot 4 with Java 21, compiled ahead of time into a GraalVM native image
-- **Authentication** - Azure AD (MSAL) with conditional mock auth for testing
+- **Authentication** - Entra through stock oauth2-proxy ForwardAuth and HttpOnly sessions
 - **Configuration** - Azure Key Vault + Spring profiles (prod/local/test)
 - **AI Integration** - Anthropic Claude via Spring AI
 - **AI Mocking** - Express mock server for testing
@@ -16,6 +16,21 @@ Reference application for all future projects. Based on patterns from [learn-lan
 - **Testing** - Playwright E2E tests
 - **UI Components** - Material UI with custom dark theme
 - **Fetching** - Angular resource API with HttpClient
+
+## Authentication and deployment
+
+The browser uses `/oauth2/userinfo`, `/oauth2/start` and `/oauth2/sign_out`; no
+OIDC tokens or client registrations are managed in JavaScript. The API keeps
+its JWT audience/scope/role validation and requires an exact `BROWSER_ORIGIN`
+for unsafe requests. Set that origin in every runtime configuration.
+
+Platform Terraform owns `hello-oauth2-proxy` and its Secrets. Publish the shared
+ForwardAuth/app chart changes and provision that release before deploying this
+app. `scripts/deploy.sh` fails early if the auth release or middleware-capable
+charts are missing. It supplies the production origin and middleware names.
+Use the complete test pod at `http://localhost:8150` for local authentication;
+standalone hot reload needs the same-origin gateway in front of its dev server.
+Reauthentication opens a popup rather than navigating away from mounted work.
 
 ## One image per Spring profile
 
@@ -86,7 +101,7 @@ via your distro, e.g. `apt install podman`.
 
 ```bash
 # Start test stack
-scripts/compose_up.sh
+scripts/pod_up.sh
 
 # Run E2E tests
 cd test && npm test
