@@ -37,8 +37,10 @@ springAppChartVersion=$(helm search repo mucsi96/spring-app --output json | jq -
 clientAppChartVersion=$(helm search repo mucsi96/client-app --output json | jq -r '.[0].version')
 
 helm status hello-oauth2-proxy --namespace hello >/dev/null
-helm show values mucsi96/spring-app --version "$springAppChartVersion" | grep -q '^routeMiddlewares:'
-helm show values mucsi96/client-app --version "$clientAppChartVersion" | grep -q '^routeMiddlewares:'
+helm show values mucsi96/spring-app --version "$springAppChartVersion" | grep -q '^routeFilters:'
+helm show values mucsi96/client-app --version "$clientAppChartVersion" | grep -q '^routeFilters:'
+API_ROUTE_FILTERS=$(kubectl --namespace hello get configmap hello-oauth2-proxy-route-filters -o jsonpath='{.data.api}' | jq -ce 'select(type == "array" and any(.[]; .type == "ExtensionRef" and .extensionRef.name == "hello-oauth2-proxy-api"))')
+CLIENT_ROUTE_FILTERS=$(kubectl --namespace hello get configmap hello-oauth2-proxy-route-filters -o jsonpath='{.data.document}' | jq -ce 'select(type == "array" and any(.[]; .type == "ExtensionRef" and .extensionRef.name == "hello-oauth2-proxy-document"))')
 
 echo "Deploying server: $SERVER_IMAGE using spring-app chart $springAppChartVersion"
 
@@ -63,7 +65,7 @@ helm upgrade $SERVER_RELEASE_NAME mucsi96/spring-app \
     --set entryPoint=web \
     --set host=$HOSTNAME \
     --set basePath=/api \
-    --set 'routeMiddlewares[0]=hello-oauth2-proxy-api' \
+    --set-json routeFilters="$API_ROUTE_FILTERS" \
     --set clientId=$API_CLIENT_ID \
     --set serviceAccountName=hello-api-workload-identity \
     --set env.AZURE_KEYVAULT_ENDPOINT=$AZURE_KEYVAULT_ENDPOINT \
@@ -83,7 +85,7 @@ helm upgrade $CLIENT_RELEASE_NAME mucsi96/client-app \
     --set-string image="$CLIENT_IMAGE" \
     --set host=$HOSTNAME \
     --set entryPoint=web \
-    --set 'routeMiddlewares[0]=hello-oauth2-proxy-document' \
+    --set-json routeFilters="$CLIENT_ROUTE_FILTERS" \
     --set resources.requests.memory=16Mi \
     --set resources.requests.cpu=5m \
     --set resources.limits.memory=32Mi \

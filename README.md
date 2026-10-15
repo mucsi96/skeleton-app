@@ -27,7 +27,8 @@ for unsafe requests. Set that origin in every runtime configuration.
 Platform Terraform owns `hello-oauth2-proxy` and its Secrets. Publish the shared
 ForwardAuth/app chart changes and provision that release before deploying this
 app. `scripts/deploy.sh` fails early if the auth release or middleware-capable
-charts are missing. It supplies the production origin and middleware names.
+charts are missing. It supplies the production origin and reads standard
+HTTPRoute filter policies from the auth release's non-secret ConfigMap.
 Use the complete test pod at `http://localhost:8150` for local authentication;
 standalone hot reload needs the same-origin gateway in front of its dev server.
 Reauthentication opens a popup rather than navigating away from mounted work.
