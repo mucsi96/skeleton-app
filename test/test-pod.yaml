@@ -97,8 +97,6 @@ spec:
       env:
         - name: SERVER_PORT
           value: "8054"
-        - name: BROWSER_ORIGIN
-          value: http://localhost:8150
         - name: AUTH_SESSION_URL
           value: http://localhost:8050/health
         - name: AUTH_SIGN_IN_URL

@@ -26,9 +26,12 @@ or a generic `redirectTo` instruction. The loader follows that instruction.
 There is no frontend auth service, auth interceptor, route guard or login/logout
 UI. A read-only `/oauth2/userinfo` resource supplies the header profile menu.
 
-The API keeps JWT audience/scope/role validation. `BrowserOriginFilter` requires
-the exact configured `BROWSER_ORIGIN` for unsafe requests: cookie authentication
-and the proxy-injected bearer token do not establish the browser request's origin.
+The API keeps JWT audience/scope/role validation and uses Spring Security's built-in
+SPA CSRF protection for unsafe requests, including proxy-injected bearer requests.
+The initial environment call sets a Secure, host-only `__Host-XSRF-TOKEN` cookie at
+`/`; Angular's built-in XSRF support sends its value as `X-XSRF-TOKEN` on same-origin
+mutations. This is a CSRF token, not an OAuth credential. There is no custom filter
+or auth interceptor, and no backend `BROWSER_ORIGIN` setting is needed.
 
 Platform Terraform owns `hello-oauth2-proxy` and its Secrets. Publish the shared
 ForwardAuth/app chart changes and provision that release before deploying this
@@ -44,7 +47,7 @@ unrenewable session re-enters login on the next page load.
 The app tests use mock authentication. Playwright injects a mock-issued bearer
 token into browser API requests and supplies profile data. The existing mock
 provider's health endpoint stands in for a valid bootstrap session. Backend JWT
-validation stays enabled. Test pods run the app, database, mock OIDC/AI services
+validation and Spring CSRF checks stay enabled. Test pods run the app, database, mock OIDC/AI services
 and routing, without oauth2-proxy or Redis. Playwright targets `http://localhost:8150`.
 
 ## One image per Spring profile

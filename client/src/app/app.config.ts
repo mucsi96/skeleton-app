@@ -7,6 +7,7 @@ import { provideRouter } from '@angular/router';
 import {
   provideHttpClient,
   withInterceptors,
+  withXsrfConfiguration,
 } from '@angular/common/http';
 import {
   MAT_RIPPLE_GLOBAL_OPTIONS,
@@ -31,6 +32,7 @@ export function getAppConfig(environment: EnvironmentConfig): ApplicationConfig 
       provideZoneChangeDetection({ eventCoalescing: true }),
       provideRouter(routes),
       provideHttpClient(
+        withXsrfConfiguration({ cookieName: '__Host-XSRF-TOKEN' }),
         withInterceptors([
           errorInterceptor,
           timezoneInterceptor,

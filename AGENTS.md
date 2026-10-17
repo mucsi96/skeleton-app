@@ -278,4 +278,6 @@ Both packages must be public for anonymous Kubernetes pulls.
 - Client fetches config before bootstrap
 - Environment controller checks the private proxy session before Angular starts.
 - No frontend auth service/interceptor/guard or sign-in/out UI. Userinfo is read-only profile data.
+- Use Spring Security SPA CSRF and Angular's built-in XSRF support. Keep CSRF checks
+  active for proxy-injected bearer requests; do not add a custom Origin filter.
 - App E2E fixtures mock gateway identity and profile data; do not run oauth2-proxy/Redis or duplicate platform session-flow tests.

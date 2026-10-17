@@ -71,7 +71,6 @@ helm upgrade $SERVER_RELEASE_NAME mucsi96/spring-app \
     --set serviceAccountName=hello-api-workload-identity \
     --set env.AZURE_KEYVAULT_ENDPOINT=$AZURE_KEYVAULT_ENDPOINT \
     --set env.CLIENT_APP_NAME=$CLIENT_RELEASE_NAME \
-    --set-string env.BROWSER_ORIGIN="https://$HOSTNAME" \
     --set-string env.AUTH_SESSION_URL="$AUTH_SESSION_URL" \
     --set-string env.AUTH_SIGN_IN_URL="$AUTH_SIGN_IN_URL" \
     --set resources.requests.memory=64Mi \
