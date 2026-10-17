@@ -8,7 +8,7 @@ Reference application for all future projects. Based on patterns from [learn-lan
 - **Deployment** - Docker multi-stage builds with Traefik reverse proxy
 - **Client** - Angular 21 with Material UI dark theme
 - **Server** - Spring Boot 4 with Java 21, compiled ahead of time into a GraalVM native image
-- **Authentication** - Azure AD (MSAL) with conditional mock auth for testing
+- **Authentication** - Entra through stock oauth2-proxy ForwardAuth and HttpOnly sessions
 - **Configuration** - Azure Key Vault + Spring profiles (prod/local/test)
 - **AI Integration** - Anthropic Claude via Spring AI
 - **AI Mocking** - Express mock server for testing
@@ -16,6 +16,39 @@ Reference application for all future projects. Based on patterns from [learn-lan
 - **Testing** - Playwright E2E tests
 - **UI Components** - Material UI with custom dark theme
 - **Fetching** - Angular resource API with HttpClient
+
+## Authentication and deployment
+
+Static HTML, bundles and SPA routes are public. Before Angular starts, the loader
+requests `/api/environment` with the current relative URL as `returnTo`. The
+environment controller checks the private proxy session and returns configuration
+or a generic `redirectTo` instruction. The loader follows that instruction.
+There is no frontend auth service, auth interceptor, route guard or login/logout
+UI. A read-only `/oauth2/userinfo` resource supplies the header profile menu.
+
+The API keeps JWT audience/scope/role validation and uses Spring Security's built-in
+SPA CSRF protection for unsafe requests, including proxy-injected bearer requests.
+The initial environment call sets a Secure, host-only `__Host-XSRF-TOKEN` cookie at
+`/`; Angular's built-in XSRF support sends its value as `X-XSRF-TOKEN` on same-origin
+mutations. This is a CSRF token, not an OAuth credential. There is no custom filter
+or auth interceptor, and no backend `BROWSER_ORIGIN` setting is needed.
+
+Platform Terraform owns `hello-oauth2-proxy` and its Secrets. Publish the shared
+ForwardAuth/app chart changes and provision that release before deploying this
+app. `scripts/deploy.sh` fails early if the auth release or middleware-capable
+charts are missing. It supplies the production origin and reads standard
+API route filters from `forward-auth-config` in the app Azure Key Vault. That
+configuration also supplies the auth release name, `session_url` and `sign_in_url`;
+the last two become backend `AUTH_SESSION_URL` and `AUTH_SIGN_IN_URL` variables.
+Only the API receives auth filters. The client upgrade resets old values to
+remove previous frontend filters. The proxy owns OAuth and session renewal; an
+unrenewable session re-enters login on the next page load.
+
+The app tests use mock authentication. Playwright injects a mock-issued bearer
+token into browser API requests and supplies profile data. The existing mock
+provider's health endpoint stands in for a valid bootstrap session. Backend JWT
+validation and Spring CSRF checks stay enabled. Test pods run the app, database, mock OIDC/AI services
+and routing, without oauth2-proxy or Redis. Playwright targets `http://localhost:8150`.
 
 ## One image per Spring profile
 
@@ -86,7 +119,7 @@ via your distro, e.g. `apt install podman`.
 
 ```bash
 # Start test stack
-scripts/compose_up.sh
+scripts/pod_up.sh
 
 # Run E2E tests
 cd test && npm test
