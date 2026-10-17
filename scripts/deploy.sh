@@ -26,6 +26,11 @@ trap 'rm -f "$KUBECONFIG"' EXIT
 
 HOSTNAME=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name hostname --query value -o tsv)
 API_CLIENT_ID=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name api-client-id --query value -o tsv)
+AUTH_CONFIG=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name forward-auth-config --query value -o tsv)
+AUTH_RELEASE=$(jq -er '.release_name | select(type == "string" and length > 0)' <<<"$AUTH_CONFIG")
+AUTH_SESSION_URL=$(jq -er '.session_url | select(type == "string" and test("^https?://"))' <<<"$AUTH_CONFIG")
+AUTH_SIGN_IN_URL=$(jq -er '.sign_in_url | select(type == "string" and test("^https?://"))' <<<"$AUTH_CONFIG")
+API_ROUTE_FILTERS=$(jq -ce --arg middleware "${AUTH_RELEASE}-api" '.route_filters.api | select(type == "array" and any(.[]; .type == "ExtensionRef" and .extensionRef.group == "traefik.io" and .extensionRef.kind == "Middleware" and .extensionRef.name == $middleware))' <<<"$AUTH_CONFIG")
 
 echo "Updating Helm repositories..."
 # The mucsi96 charts no longer bundle Prometheus exporter sidecars or
@@ -36,11 +41,8 @@ helm repo add mucsi96 https://mucsi96.github.io/k8s-helm-charts --force-update
 springAppChartVersion=$(helm search repo mucsi96/spring-app --output json | jq -r '.[0].version')
 clientAppChartVersion=$(helm search repo mucsi96/client-app --output json | jq -r '.[0].version')
 
-helm status hello-oauth2-proxy --namespace hello >/dev/null
+helm status "$AUTH_RELEASE" --namespace hello >/dev/null
 helm show values mucsi96/spring-app --version "$springAppChartVersion" | grep -q '^routeFilters:'
-helm show values mucsi96/client-app --version "$clientAppChartVersion" | grep -q '^routeFilters:'
-API_ROUTE_FILTERS=$(kubectl --namespace hello get configmap hello-oauth2-proxy-route-filters -o jsonpath='{.data.api}' | jq -ce 'select(type == "array" and any(.[]; .type == "ExtensionRef" and .extensionRef.name == "hello-oauth2-proxy-api"))')
-CLIENT_ROUTE_FILTERS=$(kubectl --namespace hello get configmap hello-oauth2-proxy-route-filters -o jsonpath='{.data.document}' | jq -ce 'select(type == "array" and any(.[]; .type == "ExtensionRef" and .extensionRef.name == "hello-oauth2-proxy-document"))')
 
 echo "Deploying server: $SERVER_IMAGE using spring-app chart $springAppChartVersion"
 
@@ -62,7 +64,6 @@ helm upgrade $SERVER_RELEASE_NAME mucsi96/spring-app \
     --install \
     --version $springAppChartVersion \
     --set-string image="$SERVER_IMAGE" \
-    --set entryPoint=web \
     --set host=$HOSTNAME \
     --set basePath=/api \
     --set-json routeFilters="$API_ROUTE_FILTERS" \
@@ -71,6 +72,8 @@ helm upgrade $SERVER_RELEASE_NAME mucsi96/spring-app \
     --set env.AZURE_KEYVAULT_ENDPOINT=$AZURE_KEYVAULT_ENDPOINT \
     --set env.CLIENT_APP_NAME=$CLIENT_RELEASE_NAME \
     --set-string env.BROWSER_ORIGIN="https://$HOSTNAME" \
+    --set-string env.AUTH_SESSION_URL="$AUTH_SESSION_URL" \
+    --set-string env.AUTH_SIGN_IN_URL="$AUTH_SIGN_IN_URL" \
     --set resources.requests.memory=64Mi \
     --set resources.requests.cpu=25m \
     --set resources.limits.memory=256Mi \
@@ -81,11 +84,10 @@ echo "Deploying client: $CLIENT_IMAGE using client-app chart $clientAppChartVers
 
 helm upgrade $CLIENT_RELEASE_NAME mucsi96/client-app \
     --install \
+    --reset-values \
     --version $clientAppChartVersion \
     --set-string image="$CLIENT_IMAGE" \
     --set host=$HOSTNAME \
-    --set entryPoint=web \
-    --set-json routeFilters="$CLIENT_ROUTE_FILTERS" \
     --set resources.requests.memory=16Mi \
     --set resources.requests.cpu=5m \
     --set resources.limits.memory=32Mi \

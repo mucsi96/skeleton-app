@@ -1,25 +1,12 @@
 <mat-toolbar class="header">
   <nav>
     <a mat-button href="/">Skeleton App</a>
-    @if(isAuthenticated()) {
     <div class="header-right">
       <app-header></app-header>
     </div>
-    }
   </nav>
 </mat-toolbar>
 
 <main>
-  @if (authError(); as error) {
-  <div class="auth-error" role="alert">
-    <h1>Sign-in required</h1>
-    <p class="auth-error-details">{{ error }}</p>
-    <button mat-flat-button (click)="retryLogin()">
-      Sign in again
-    </button>
-  </div>
-  }
-  @if (userData()) {
-    <router-outlet></router-outlet>
-  }
+  <router-outlet></router-outlet>
 </main>

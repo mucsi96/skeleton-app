@@ -19,19 +19,33 @@ Reference application for all future projects. Based on patterns from [learn-lan
 
 ## Authentication and deployment
 
-The browser uses `/oauth2/userinfo`, `/oauth2/start` and `/oauth2/sign_out`; no
-OIDC tokens or client registrations are managed in JavaScript. The API keeps
-its JWT audience/scope/role validation and requires an exact `BROWSER_ORIGIN`
-for unsafe requests. Set that origin in every runtime configuration.
+Static HTML, bundles and SPA routes are public. Before Angular starts, the loader
+requests `/api/environment` with the current relative URL as `returnTo`. The
+environment controller checks the private proxy session and returns configuration
+or a generic `redirectTo` instruction. The loader follows that instruction.
+There is no frontend auth service, auth interceptor, route guard or login/logout
+UI. A read-only `/oauth2/userinfo` resource supplies the header profile menu.
+
+The API keeps JWT audience/scope/role validation. `BrowserOriginFilter` requires
+the exact configured `BROWSER_ORIGIN` for unsafe requests: cookie authentication
+and the proxy-injected bearer token do not establish the browser request's origin.
 
 Platform Terraform owns `hello-oauth2-proxy` and its Secrets. Publish the shared
 ForwardAuth/app chart changes and provision that release before deploying this
 app. `scripts/deploy.sh` fails early if the auth release or middleware-capable
 charts are missing. It supplies the production origin and reads standard
-HTTPRoute filter policies from the auth release's non-secret ConfigMap.
-Use the complete test pod at `http://localhost:8150` for local authentication;
-standalone hot reload needs the same-origin gateway in front of its dev server.
-Reauthentication opens a popup rather than navigating away from mounted work.
+API route filters from `forward-auth-config` in the app Azure Key Vault. That
+configuration also supplies the auth release name, `session_url` and `sign_in_url`;
+the last two become backend `AUTH_SESSION_URL` and `AUTH_SIGN_IN_URL` variables.
+Only the API receives auth filters. The client upgrade resets old values to
+remove previous frontend filters. The proxy owns OAuth and session renewal; an
+unrenewable session re-enters login on the next page load.
+
+The app tests use mock authentication. Playwright injects a mock-issued bearer
+token into browser API requests and supplies profile data. The existing mock
+provider's health endpoint stands in for a valid bootstrap session. Backend JWT
+validation stays enabled. Test pods run the app, database, mock OIDC/AI services
+and routing, without oauth2-proxy or Redis. Playwright targets `http://localhost:8150`.
 
 ## One image per Spring profile
 

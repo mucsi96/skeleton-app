@@ -16,7 +16,7 @@ test('shows user initials in header', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'O', exact: true })).toBeVisible();
 });
 
-test('shows user name in popup', async ({ page }) => {
+test('shows user name in the profile menu', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'O', exact: true }).click();
   await expect(page.getByText('Owner', { exact: true })).toBeVisible();

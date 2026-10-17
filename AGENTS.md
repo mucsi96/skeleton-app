@@ -62,7 +62,7 @@ Reference application demonstrating patterns for:
 - Deployment (Docker images published to registry)
 - Client (Angular 21 with Material UI)
 - Server (Spring Boot 4 with Java 21)
-- Authentication (Azure AD / MSAL)
+- Authentication (Entra through platform oauth2-proxy and HttpOnly sessions)
 - Configuration (Azure Key Vault, Spring profiles)
 - AI integration (Anthropic Claude via Spring AI)
 - AI mocking (Express mock server)
@@ -71,7 +71,7 @@ Reference application demonstrating patterns for:
 
 ## Architecture
 
-- **client/** - Angular 21 SPA with Material UI, MSAL authentication
+- **client/** - Public Angular SPA with Material UI and a generic config-or-redirect loader
 - **server/** - Spring Boot 4 REST API with PostgreSQL, Spring AI
 - **mock_anthropic_server/** - Express mock for Claude API
 - **test/** - Playwright E2E tests
@@ -84,7 +84,7 @@ Reference application demonstrating patterns for:
 - Angular 21.2.0
 - PostgreSQL 17
 - Spring AI 2.0.0-M2 (Anthropic)
-- Azure AD (MSAL) authentication
+- Entra authentication through platform ForwardAuth
 - Azure Key Vault for secrets
 - Traefik reverse proxy
 - Docker multi-stage builds
@@ -123,7 +123,7 @@ cd test && npx playwright test --ui  # Interactive test runner
 
 ## API Routes
 
-- `GET /api/environment` - Client configuration (public)
+- `GET /api/environment` - Configuration or server-selected login redirect
 - `GET /api/greeting` - AI-powered greeting (authenticated)
 
 ## Data Model
@@ -135,7 +135,7 @@ cd test && npx playwright test --ui  # Interactive test runner
 ### Spring Profiles
 - **prod** - Production with Azure Key Vault and AAD
 - **local** - Local development with Podman DB
-- **test** - Testing with disabled auth and mock AI services
+- **test** - Mock OIDC/AI services with backend JWT validation enabled
 
 ## Native image and the baked-in Spring profile
 
@@ -276,4 +276,6 @@ Both packages must be public for anonymous Kubernetes pulls.
 ### Environment Config
 - Server exposes `/api/environment` endpoint
 - Client fetches config before bootstrap
-- Conditionally enables MSAL based on `mockAuth` flag
+- Environment controller checks the private proxy session before Angular starts.
+- No frontend auth service/interceptor/guard or sign-in/out UI. Userinfo is read-only profile data.
+- App E2E fixtures mock gateway identity and profile data; do not run oauth2-proxy/Redis or duplicate platform session-flow tests.
