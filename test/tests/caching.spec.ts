@@ -6,8 +6,13 @@ test('serves index.html with no-cache so new deployments are picked up', async (
 });
 
 test('serves SPA fallback routes with no-cache', async ({ request }) => {
-  const response = await request.get('/');
+  const response = await request.get('/recipes/42', { headers: { Accept: 'text/html' } });
+  expect(response.status()).toBe(200);
   expect(response.headers()['cache-control']).toContain('no-cache');
+});
+
+test('missing assets return 404 instead of the SPA shell', async ({ request }) => {
+  expect((await request.get('/missing.js')).status()).toBe(404);
 });
 
 test('serves web manifest with no-cache', async ({ request }) => {

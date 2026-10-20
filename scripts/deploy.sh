@@ -28,9 +28,8 @@ HOSTNAME=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name ho
 API_CLIENT_ID=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name api-client-id --query value -o tsv)
 AUTH_CONFIG=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name forward-auth-config --query value -o tsv)
 AUTH_RELEASE=$(jq -er '.release_name | select(type == "string" and length > 0)' <<<"$AUTH_CONFIG")
-AUTH_SESSION_URL=$(jq -er '.session_url | select(type == "string" and test("^https?://"))' <<<"$AUTH_CONFIG")
-AUTH_SIGN_IN_URL=$(jq -er '.sign_in_url | select(type == "string" and test("^https?://"))' <<<"$AUTH_CONFIG")
-API_ROUTE_FILTERS=$(jq -ce --arg middleware "${AUTH_RELEASE}-api" '.route_filters.api | select(type == "array" and any(.[]; .type == "ExtensionRef" and .extensionRef.group == "traefik.io" and .extensionRef.kind == "Middleware" and .extensionRef.name == $middleware))' <<<"$AUTH_CONFIG")
+PROXY_AUTH=$(jq -ce '.auth | select(.proxyService | type == "string" and length > 0) | select(.proxyPort | type == "number") | select(.mode == "api-token")' <<<"$AUTH_CONFIG")
+CLIENT_RUNTIME_CONFIG=$(az keyvault secret show --vault-name "$AZURE_KEYVAULT_NAME" --name client-runtime-config --query value -o tsv | jq -ce 'select(.clientLogUrl | type == "string") | select(.clientAppName | type == "string")')
 
 echo "Updating Helm repositories..."
 # The mucsi96 charts no longer bundle Prometheus exporter sidecars or
@@ -42,7 +41,9 @@ springAppChartVersion=$(helm search repo mucsi96/spring-app --output json | jq -
 clientAppChartVersion=$(helm search repo mucsi96/client-app --output json | jq -r '.[0].version')
 
 helm status "$AUTH_RELEASE" --namespace hello >/dev/null
-helm show values mucsi96/spring-app --version "$springAppChartVersion" | grep -q '^routeFilters:'
+helm show values mucsi96/spring-app --version "$springAppChartVersion" | grep -q '^auth:'
+helm show values mucsi96/client-app --version "$clientAppChartVersion" | grep -q '^auth:'
+helm show values mucsi96/client-app --version "$clientAppChartVersion" | grep -q '^runtimeConfig:'
 
 echo "Deploying server: $SERVER_IMAGE using spring-app chart $springAppChartVersion"
 
@@ -62,17 +63,15 @@ echo "Deploying server: $SERVER_IMAGE using spring-app chart $springAppChartVers
 # in server/Dockerfile - keep the two in step).
 helm upgrade $SERVER_RELEASE_NAME mucsi96/spring-app \
     --install \
+    --reset-values \
     --version $springAppChartVersion \
     --set-string image="$SERVER_IMAGE" \
     --set host=$HOSTNAME \
     --set basePath=/api \
-    --set-json routeFilters="$API_ROUTE_FILTERS" \
+    --set-json auth="$PROXY_AUTH" \
     --set clientId=$API_CLIENT_ID \
     --set serviceAccountName=hello-api-workload-identity \
     --set env.AZURE_KEYVAULT_ENDPOINT=$AZURE_KEYVAULT_ENDPOINT \
-    --set env.CLIENT_APP_NAME=$CLIENT_RELEASE_NAME \
-    --set-string env.AUTH_SESSION_URL="$AUTH_SESSION_URL" \
-    --set-string env.AUTH_SIGN_IN_URL="$AUTH_SIGN_IN_URL" \
     --set resources.requests.memory=64Mi \
     --set resources.requests.cpu=25m \
     --set resources.limits.memory=256Mi \
@@ -87,6 +86,9 @@ helm upgrade $CLIENT_RELEASE_NAME mucsi96/client-app \
     --version $clientAppChartVersion \
     --set-string image="$CLIENT_IMAGE" \
     --set host=$HOSTNAME \
+    --set-json auth="$PROXY_AUTH" \
+    --set-json runtimeConfig="$CLIENT_RUNTIME_CONFIG" \
+    --set healthPath=/index.html \
     --set resources.requests.memory=16Mi \
     --set resources.requests.cpu=5m \
     --set resources.limits.memory=32Mi \
