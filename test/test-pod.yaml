@@ -61,7 +61,7 @@ spec:
         failureThreshold: 5
 
     - name: mock-oauth2
-      image: ghcr.io/mucsi96/mock-oidc-provider:12
+      image: ghcr.io/mucsi96/mock-oidc-provider:14
       ports:
         - containerPort: 8050
           hostPort: 8050
@@ -127,7 +127,7 @@ spec:
       image: localhost/skeleton-app-client:test
       livenessProbe:
         httpGet:
-          path: /
+          path: /index.html
           port: 8000
         initialDelaySeconds: 5
         periodSeconds: 2
