@@ -50,7 +50,7 @@ supplies the public
 `clientLogUrl` and `clientAppName` map to the client chart's `runtimeConfig` value.
 The deploy identity has read access scoped to those deployment secrets. Backend
 session/login URL variables are no longer consumed. The client chart keeps its
-own route and `/index.html` health probes. The proxy owns OAuth and session renewal; an
+own route and `/` health probes. The proxy owns OAuth and session renewal; an
 unrenewable session re-enters login on the next page load.
 All apps use the host-only `__Host-session` cookie; separate hostnames keep browser
 sessions separate. Hello is always hosted at `/`, including all nested UI routes.

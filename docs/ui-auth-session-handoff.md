@@ -2,6 +2,11 @@
 
 Snapshot: 20 October 2026. Read repository AGENTS.md before continuing.
 
+Follow-up (23 October 2026): client chart `healthPath` was removed. All three
+probes now use `/`; nginx explicitly serves `/index.html` at the origin root.
+Deployment no longer supplies a probe-path override. Nested SPA routing remains
+Gateway-owned. The snapshot details below describe the earlier implementation.
+
 ## Start here
 
 - Architecture and junior-friendly migration guide:

@@ -88,7 +88,6 @@ helm upgrade $CLIENT_RELEASE_NAME mucsi96/client-app \
     --set host=$HOSTNAME \
     --set-json auth="$PROXY_AUTH" \
     --set-json runtimeConfig="$CLIENT_RUNTIME_CONFIG" \
-    --set healthPath=/index.html \
     --set resources.requests.memory=16Mi \
     --set resources.requests.cpu=5m \
     --set resources.limits.memory=32Mi \

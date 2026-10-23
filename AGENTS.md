@@ -276,7 +276,7 @@ Both packages must be public for anonymous Kubernetes pulls.
 - The client chart owns SPA routes, document auth, index rewriting and config injection. API charts own API auth/header policies. The platform supplies only the proxy, login configuration and credentials.
 - Keep `<script>window.__APP_CONFIG__ = "__APP_CONFIG_JSON__";</script>` before Angular. The client chart replaces the quoted marker with public JSON.
 - Angular validates `clientLogUrl`/`clientAppName` and bootstraps directly. There is no environment endpoint or config fetch.
-- Deploy reads the proxy reference from `forward-auth-config.auth` and passes it to each chart's `auth` value. Public config is separate `client-runtime-config`. Do not pass generated policy lists. Keep the client HTTPRoute and `/index.html` probes.
+- Deploy reads the proxy reference from `forward-auth-config.auth` and passes it to each chart's `auth` value. Public config is separate `client-runtime-config`. Do not pass generated policy lists. Keep the client HTTPRoute and `/` probes; nginx serves index HTML at the origin root.
 - Faro uses the exact same-origin logging route with credential stripping and collector origin/rate-limit controls.
 - No frontend auth service/interceptor/guard or sign-in/out UI. Userinfo is read-only profile data.
 - Use Spring Security SPA CSRF and Angular's built-in XSRF support. Keep CSRF checks
