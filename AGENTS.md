@@ -71,7 +71,7 @@ Reference application demonstrating patterns for:
 
 ## Architecture
 
-- **client/** - Public Angular SPA with Material UI and a generic config-or-redirect loader
+- **client/** - Angular SPA with client-chart-owned Gateway document/static routing and inline runtime config
 - **server/** - Spring Boot 4 REST API with PostgreSQL, Spring AI
 - **mock_anthropic_server/** - Express mock for Claude API
 - **test/** - Playwright E2E tests
@@ -123,7 +123,6 @@ cd test && npx playwright test --ui  # Interactive test runner
 
 ## API Routes
 
-- `GET /api/environment` - Configuration or server-selected login redirect
 - `GET /api/greeting` - AI-powered greeting (authenticated)
 
 ## Data Model
@@ -273,10 +272,12 @@ The production Dockerfiles carry GHCR source labels, triggering both initial
 publications through normal component version detection.
 Both packages must be public for anonymous Kubernetes pulls.
 
-### Environment Config
-- Server exposes `/api/environment` endpoint
-- Client fetches config before bootstrap
-- Environment controller checks the private proxy session before Angular starts.
+### Runtime Configuration and Document Authentication
+- The client chart owns SPA routes, document auth, index rewriting and config injection. API charts own API auth/header policies. The platform supplies only the proxy, login configuration and credentials.
+- Keep `<script>window.__APP_CONFIG__ = "__APP_CONFIG_JSON__";</script>` before Angular. The client chart replaces the quoted marker with public JSON.
+- Angular validates `clientLogUrl`/`clientAppName` and bootstraps directly. There is no environment endpoint or config fetch.
+- Deploy reads the proxy reference from `forward-auth-config.auth` and passes it to each chart's `auth` value. Public config is separate `client-runtime-config`. Do not pass generated policy lists. Keep the client HTTPRoute and `/` probes; nginx serves index HTML at the origin root.
+- Faro uses the exact same-origin logging route with credential stripping and collector origin/rate-limit controls.
 - No frontend auth service/interceptor/guard or sign-in/out UI. Userinfo is read-only profile data.
 - Use Spring Security SPA CSRF and Angular's built-in XSRF support. Keep CSRF checks
   active for proxy-injected bearer requests; do not add a custom Origin filter.

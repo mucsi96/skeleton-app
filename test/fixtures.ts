@@ -3,7 +3,8 @@ import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { cleanupDbRecords, insertGreeting } from './utils';
 
-export const test = base.extend<{ apiHeaders: Record<string, string> }>({
+export const test = base.extend<{ apiHeaders: Record<string, string>; clientLogUrl: string }>({
+  clientLogUrl: ['', { option: true }],
   apiHeaders: async ({ request }, use) => {
     const issuer = process.env.TEST_OAUTH2_URL ?? 'http://localhost:8050';
     const redirect = 'http://localhost/test';
@@ -18,7 +19,7 @@ export const test = base.extend<{ apiHeaders: Record<string, string> }>({
     if (!tokens.ok()) throw new Error(`Mock token request failed: ${tokens.status()}`);
     await use({ Authorization: `Bearer ${(await tokens.json()).access_token}` });
   },
-  page: async ({ page, apiHeaders }, use, testInfo: TestInfo) => {
+  page: async ({ page, apiHeaders, clientLogUrl }, use, testInfo: TestInfo) => {
     await cleanupDbRecords();
     await insertGreeting('World', 'Welcome to the skeleton app!');
 
@@ -27,6 +28,17 @@ export const test = base.extend<{ apiHeaders: Record<string, string> }>({
     await page.route('**/oauth2/userinfo', route => route.fulfill({ json: { email: 'owner@example.test', additionalClaims: { name: 'Owner' } } }));
     await page.route('https://fonts.googleapis.com/**', route => route.abort());
     await page.route('https://fonts.gstatic.com/**', route => route.abort());
+    await page.route('**/*', async route => {
+      if (!route.request().isNavigationRequest()) return route.fallback();
+      const response = await route.fetch();
+      const body = (await response.text()).replace(/["']__APP_CONFIG_JSON__["']/, JSON.stringify({
+        clientLogUrl, clientAppName: 'hello-client',
+      }));
+      const headers = { ...response.headers() };
+      delete headers['content-length'];
+      delete headers['content-encoding'];
+      await route.fulfill({ response, headers, body });
+    });
 
     // Reset mock AI server
     try {

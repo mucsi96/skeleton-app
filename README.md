@@ -19,36 +19,60 @@ Reference application for all future projects. Based on patterns from [learn-lan
 
 ## Authentication and deployment
 
-Static HTML, bundles and SPA routes are public. Before Angular starts, the loader
-requests `/api/environment` with the current relative URL as `returnTo`. The
-environment controller checks the private proxy session and returns configuration
-or a generic `redirectTo` instruction. The loader follows that instruction.
+The client Helm chart owns SPA document/static routing and inline runtime
+configuration. Its Gateway document rule uses its own authentication middleware
+before rewriting deep links to `/index.html`. Index HTML is authenticated before
+Angular scripts are served; ordinary bundles remain public. nginx serves files
+only and missing assets return 404. There is no `/api/environment` endpoint or
+configuration fetch before bootstrap.
 There is no frontend auth service, auth interceptor, route guard or login/logout
 UI. A read-only `/oauth2/userinfo` resource supplies the header profile menu.
 
 The API keeps JWT audience/scope/role validation and uses Spring Security's built-in
 SPA CSRF protection for unsafe requests, including proxy-injected bearer requests.
-The initial environment call sets a Secure, host-only `__Host-XSRF-TOKEN` cookie at
+The initial API GET sets a Secure, host-only `__Host-XSRF-TOKEN` cookie at
 `/`; Angular's built-in XSRF support sends its value as `X-XSRF-TOKEN` on same-origin
 mutations. This is a CSRF token, not an OAuth credential. There is no custom filter
 or auth interceptor, and no backend `BROWSER_ORIGIN` setting is needed.
 
 Platform Terraform owns `hello-oauth2-proxy` and its Secrets. Publish the shared
-ForwardAuth/app chart changes and provision that release before deploying this
-app. `scripts/deploy.sh` fails early if the auth release or middleware-capable
-charts are missing. It supplies the production origin and reads standard
-API route filters from `forward-auth-config` in the app Azure Key Vault. That
-configuration also supplies the auth release name, `session_url` and `sign_in_url`;
-the last two become backend `AUTH_SESSION_URL` and `AUTH_SIGN_IN_URL` variables.
-Only the API receives auth filters. The client upgrade resets old values to
-remove previous frontend filters. The proxy owns OAuth and session renewal; an
+app chart changes and provision the proxy reference/deploy permissions before
+deploying this app. New app-owned middleware can use the existing chart-5 proxy;
+upgrade the proxy chart only after live routes stop referencing its old middleware.
+`scripts/deploy.sh` fails early if the auth release or middleware-capable
+charts are missing. It reads `.auth` from `forward-auth-config` in app Azure Key
+Vault: the proxy Service, port and mode. It passes that object to
+both charts' `auth` value; each chart creates its own middleware and policies.
+Both upgrades reset Helm values and supply the intended configuration, removing
+obsolete policy-list settings. New charts do not accept manual filter lists.
+No generated filter lists are read or assembled. Separate `client-runtime-config`
+supplies the public
+`clientLogUrl` and `clientAppName` map to the client chart's `runtimeConfig` value.
+The deploy identity has read access scoped to those deployment secrets. Backend
+session/login URL variables are no longer consumed. The client chart keeps its
+own route and `/` health probes. The proxy owns OAuth and session renewal; an
 unrenewable session re-enters login on the next page load.
+All apps use the host-only `__Host-session` cookie; separate hostnames keep browser
+sessions separate. Hello is always hosted at `/`, including all nested UI routes.
 
 The app tests use mock authentication. Playwright injects a mock-issued bearer
-token into browser API requests and supplies profile data. The existing mock
-provider's health endpoint stands in for a valid bootstrap session. Backend JWT
+token into browser API requests, supplies profile data and injects public runtime
+config into documents. Backend JWT
 validation and Spring CSRF checks stay enabled. Test pods run the app, database, mock OIDC/AI services
 and routing, without oauth2-proxy or Redis. Playwright targets `http://localhost:8150`.
+
+The built HTML contains `<script>window.__APP_CONFIG__ = "__APP_CONFIG_JSON__";</script>`
+before Angular. The client-owned body middleware replaces the quoted marker with
+HTML-escaped JSON; startup rejects a missing configuration. Enable the pinned
+Traefik rewritebody v0.3.1 plugin through the ingress module before deployment.
+Keep index HTML uncompressed at the origin; the client route sets no-store and
+strips validators/conditional/range headers before injection.
+
+Faro uses the absolute same-origin URL `https://hello.<domain>/_telemetry/collect`.
+The logging module owns that exact collector route, rewriting to `/collect` and
+stripping app cookies/bearer/CSRF headers. Browser collection needs no cross-origin
+preflight; the receiver keeps its explicit origin allowlist and rate limits.
+Full Gateway/proxy/plugin integration lives in the shared chart regression.
 
 ## One image per Spring profile
 

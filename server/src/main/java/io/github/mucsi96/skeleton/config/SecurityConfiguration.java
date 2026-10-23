@@ -46,7 +46,6 @@ public class SecurityConfiguration {
 
         http.authorizeHttpRequests(requests -> requests
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                .requestMatchers("/environment").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .anyRequest().hasAuthority("SCOPE_api-access"));
 

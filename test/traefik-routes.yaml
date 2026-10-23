@@ -2,8 +2,14 @@ http:
   routers:
     server:
       rule: "PathPrefix(`/api`)"
-      priority: 2
+      priority: 10
       service: server
+      entryPoints: [web]
+    document:
+      rule: "(Method(`GET`) || Method(`HEAD`)) && (Path(`/`) || Path(`/index.html`) || Header(`Sec-Fetch-Dest`, `document`) || HeaderRegexp(`Accept`, `(?i)(^|[ ,])text/html([ ;,]|$)`))"
+      priority: 2
+      service: client
+      middlewares: [index-path, index-headers]
       entryPoints: [web]
     client:
       rule: "PathPrefix(`/`)"
@@ -19,3 +25,13 @@ http:
       loadBalancer:
         servers:
           - url: http://127.0.0.1:8000
+  middlewares:
+    index-path:
+      replacePath:
+        path: /index.html
+    index-headers:
+      headers:
+        customRequestHeaders:
+          Accept-Encoding: identity
+        customResponseHeaders:
+          Cache-Control: private, no-cache, no-store

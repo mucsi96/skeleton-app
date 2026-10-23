@@ -97,10 +97,6 @@ spec:
       env:
         - name: SERVER_PORT
           value: "8054"
-        - name: AUTH_SESSION_URL
-          value: http://localhost:8050/health
-        - name: AUTH_SIGN_IN_URL
-          value: http://localhost:8150/test-login
         - name: SPRING_ACTUATOR_PORT
           value: "8152"
         - name: DB_URL
@@ -131,7 +127,7 @@ spec:
       image: localhost/skeleton-app-client:test
       livenessProbe:
         httpGet:
-          path: /
+          path: /index.html
           port: 8000
         initialDelaySeconds: 5
         periodSeconds: 2
