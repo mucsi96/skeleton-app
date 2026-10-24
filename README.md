@@ -19,11 +19,16 @@ Reference application for all future projects. Based on patterns from [learn-lan
 
 ## Authentication and deployment
 
-The client Helm chart owns SPA document/static routing and inline runtime
+See [static client deployment](docs/static-hosting.md) for the direct Node build,
+Azure CLI publishing, permissions and browser checks.
+
+The dedicated `static-client-app` Helm chart owns SPA document routing and inline runtime
 configuration. Its Gateway document rule uses its own authentication middleware
 before rewriting deep links to `/index.html`. Index HTML is authenticated before
-Angular scripts are served; ordinary bundles remain public. nginx serves files
-only and missing assets return 404. There is no `/api/environment` endpoint or
+Angular scripts are served; ordinary bundles remain public. Scripts, styles, fonts,
+icons and manifests load directly from Azure Blob URLs with application-origin
+CORS. nginx is only the local/E2E origin. Missing assets return 404.
+There is no `/api/environment` endpoint or
 configuration fetch before bootstrap.
 There is no frontend auth service, auth interceptor, route guard or login/logout
 UI. A read-only `/oauth2/userinfo` resource supplies the header profile menu.
@@ -37,8 +42,8 @@ or auth interceptor, and no backend `BROWSER_ORIGIN` setting is needed.
 
 Platform Terraform owns `hello-oauth2-proxy` and its Secrets. Publish the shared
 app chart changes and provision the proxy reference/deploy permissions before
-deploying this app. New app-owned middleware can use the existing chart-5 proxy;
-upgrade the proxy chart only after live routes stop referencing its old middleware.
+deploying this app. The platform must enable external static origins and provision
+the client storage account before the first storage rollout.
 `scripts/deploy.sh` fails early if the auth release or middleware-capable
 charts are missing. It reads `.auth` from `forward-auth-config` in app Azure Key
 Vault: the proxy Service, port and mode. It passes that object to
@@ -50,7 +55,8 @@ supplies the public
 `clientLogUrl` and `clientAppName` map to the client chart's `runtimeConfig` value.
 The deploy identity has read access scoped to those deployment secrets. Backend
 session/login URL variables are no longer consumed. The client chart keeps its
-own route and `/` health probes. The proxy owns OAuth and session renewal; an
+own route but creates no Deployment, environment Secret or probes in storage mode.
+The proxy owns OAuth and session renewal; an
 unrenewable session re-enters login on the next page load.
 All apps use the host-only `__Host-session` cookie; separate hostnames keep browser
 sessions separate. Hello is always hosted at `/`, including all nested UI routes.

@@ -13,10 +13,17 @@ else
   # processing, so the pod image has to be built with the test profile.
   podman build --build-arg SPRING_PROFILE=test \
     -t localhost/skeleton-app-server:test "$PROJECT_DIR/server" &
-  podman build -t localhost/skeleton-app-client:test "$PROJECT_DIR/client" &
+  server_build=$!
+  (cd "$PROJECT_DIR/client" && npm ci && npm run build) &
+  client_build=$!
   podman build -t localhost/skeleton-app-mock-anthropic:test "$PROJECT_DIR/mock_anthropic_server" &
-  wait
+  mock_build=$!
+  wait "$server_build"
+  wait "$client_build"
+  wait "$mock_build"
 fi
+
+test -f "$PROJECT_DIR/client/dist/index.html"
 
 echo "Cleaning up existing pod..."
 podman kube down "$PROJECT_DIR/test/test-pod.yaml" 2>/dev/null || true
