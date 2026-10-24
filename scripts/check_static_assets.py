@@ -10,8 +10,6 @@ import tempfile
 import threading
 from urllib.parse import urlsplit
 
-from upload_client import prepare_client
-
 
 def main(directory):
     records = []
@@ -52,7 +50,7 @@ def main(directory):
                 body = b'{"email":"owner@example.test","additionalClaims":{"name":"Owner"}}'
                 content_type = 'application/json'
             elif path in ['/', '/index.html'] or 'text/html' in self.headers.get('Accept', ''):
-                body = (Path(prepared) / 'index.html').read_text().replace(
+                body = (Path(prepared) / 'documents/index.html').read_text().replace(
                     '"__APP_CONFIG_JSON__"', json.dumps({'clientLogUrl': '', 'clientAppName': 'hello-client'})
                 ).encode()
                 content_type = 'text/html'
@@ -67,10 +65,11 @@ def main(directory):
 
     with tempfile.TemporaryDirectory(dir=os.environ.get('RUNNER_TEMP', '/tmp/opencode')) as prepared:
         app = ThreadingHTTPServer(('127.0.0.1', 0), Documents)
-        assets = ThreadingHTTPServer(('127.0.0.1', 0), partial(Assets, directory=prepared))
+        assets = ThreadingHTTPServer(('127.0.0.1', 0), partial(Assets, directory=str(Path(prepared) / 'assets')))
         app_origin = f'http://localhost:{app.server_port}'
         asset_base_url = f'http://127.0.0.1:{assets.server_port}/assets/'
-        prepare_client(directory, prepared, asset_base_url, app_origin)
+        subprocess.run(['node', str(Path(__file__).with_name('prepare-client.mjs')),
+                        directory, prepared, asset_base_url, app_origin], check=True)
         for server in [app, assets]:
             threading.Thread(target=server.serve_forever, daemon=True).start()
         try:

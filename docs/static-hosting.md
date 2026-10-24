@@ -10,17 +10,24 @@ Terraform supplies `client-storage-config` (`account_name`, `hostname`, `assets_
 identity receives Storage Blob Data Contributor separately on `$web` and `assets`.
 Uploads use `--auth-mode login`; no account keys or SAS tokens are distributed.
 
-The pipeline extracts the static files from the same image tested by Playwright,
-passes them as the `client-static` artifact, and attaches `client-static.tar.gz` to
-new client releases. Client GHCR publication is retired. The nginx image remains a
-local/test fixture. Deployment takes `CLIENT_DIST`, not `CLIENT_IMAGE`.
+The pipeline builds Angular directly with `actions/setup-node`, `npm ci` and
+`npm run build`. It passes `client/dist` as the `client-static` artifact to tests
+and deployment, and attaches `client-static.tar.gz` to new client releases.
+There is no client Dockerfile, image build or image publication. E2E tests mount
+the compiled files and nginx configuration into the stock nginx image behind
+Traefik; Traefik routes requests but does not serve files itself.
 
-`scripts/upload_client.py` checks the HTML bootstrap marker, rewrites HTML asset
+`scripts/prepare-client.mjs` checks the HTML bootstrap marker, rewrites HTML asset
 links to absolute Blob URLs with anonymous CORS requests, and keeps the document
 base at `/`. Manifest navigation fields stay on the app origin. Module imports
 and external CSS font URLs resolve relative to their Blob-hosted parents. Roboto
-and Material Icons are bundled locally. The script uploads assets with explicit
-MIME types, then index last. Failed asset uploads leave the previous
+and Material Icons are bundled locally. Preparation separates `assets/` and
+`documents/index.html` without changing the tested bundles.
+
+The official `azure/login` action authenticates with OIDC, then `azure/cli` runs
+`az storage blob upload-batch` for assets. Azure CLI infers asset MIME types;
+the manifest is explicitly published as `application/manifest+json`. Index HTML
+is uploaded separately, last. Failed asset uploads leave the previous
 index intact. Old bundles are retained for open browser tabs; asset responses
 revalidate and index is never cached. Do not delete all blobs during deployment.
 

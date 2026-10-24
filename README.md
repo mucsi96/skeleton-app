@@ -19,8 +19,8 @@ Reference application for all future projects. Based on patterns from [learn-lan
 
 ## Authentication and deployment
 
-See [static client deployment](docs/static-hosting.md) for Azure Storage publishing,
-permissions, rollout and rollback.
+See [static client deployment](docs/static-hosting.md) for the direct Node build,
+Azure CLI publishing, permissions and browser checks.
 
 The dedicated `static-client-app` Helm chart owns SPA document routing and inline runtime
 configuration. Its Gateway document rule uses its own authentication middleware

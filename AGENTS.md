@@ -268,13 +268,14 @@ release when unchanged; `hasNextVersion` alone controls publication. Forward its
 version output directly to deployment without a consumer-side tag lookup.
 The workflow serializes publication and rollout; require numbered GHCR tags or
 digests.
-The production Dockerfiles carry GHCR source labels, triggering both initial
-publications through normal component version detection.
+The server Dockerfile carries its GHCR source label.
 The server package must be public for anonymous Kubernetes pulls.
 `publish-client` attaches the tested static build archive to numbered client
 releases. Deployment uploads the same run's static artifact to Azure Storage using
-Entra login and `CLIENT_DIST`; client GHCR publication is retired. The client
-Dockerfile's nginx stage is only a local/E2E fixture. See docs/static-hosting.md.
+the official `azure/login` and `azure/cli` actions. Angular builds directly with
+Node/npm; there is no client Dockerfile or image publication. Node prepares asset
+URLs, Azure CLI batch-uploads assets, and index is uploaded last. Local/E2E tests
+mount `client/dist` into stock nginx behind Traefik. See docs/static-hosting.md.
 
 ### Runtime Configuration and Document Authentication
 - The client chart owns SPA routes, document auth, index rewriting and config injection. API charts own API auth/header policies. The platform supplies only the proxy, login configuration and credentials.
