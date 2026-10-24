@@ -2,8 +2,8 @@
 
 Production index HTML lives in Azure Storage's `$web` container. All other files
 live in its public-read `assets` Blob container. The API uses `mucsi96/spring-app`
-**34.0.0** on Kubernetes. The `hello-client` release uses
-`mucsi96/static-client-app` **2.0.0** for document-only gateway routing.
+**36.0.0** on Kubernetes. The `hello-client` release uses
+`mucsi96/static-client-app` **4.0.0** for document-only gateway routing.
 
 Terraform supplies `client-storage-config` (`account_name`, `hostname`, `assets_base_url`) alongside
 `forward-auth-config` and `client-runtime-config`. GitHub's existing federated deploy
