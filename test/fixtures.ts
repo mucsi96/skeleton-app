@@ -26,8 +26,6 @@ export const test = base.extend<{ apiHeaders: Record<string, string>; clientLogU
     // Stand in for the gateway's verified identity; no proxy/session stack in app tests.
     await page.route('**/api/**', route => route.continue({ headers: { ...route.request().headers(), ...apiHeaders } }));
     await page.route('**/oauth2/userinfo', route => route.fulfill({ json: { email: 'owner@example.test', additionalClaims: { name: 'Owner' } } }));
-    await page.route('https://fonts.googleapis.com/**', route => route.abort());
-    await page.route('https://fonts.gstatic.com/**', route => route.abort());
     await page.route('**/*', async route => {
       if (!route.request().isNavigationRequest()) return route.fallback();
       const response = await route.fetch();
