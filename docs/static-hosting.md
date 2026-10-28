@@ -47,3 +47,23 @@ has no asset catchall; it serves only SPA documents.
 build in Chromium with separate origins: modules, lazy chunks, styles, fonts,
 icons, manifest navigation, CORS enforcement, credential isolation and same-origin
 API calls.
+
+## Shared contract with Cooking and Observatory
+
+All three clients use `static-client-app` 4.0.0 and the same three deployment
+secrets: `forward-auth-config.auth`, `client-runtime-config`, and
+`client-storage-config`. The gateway authenticates documents before rewriting
+deep links and injecting public configuration. Browser assets use anonymous Blob
+requests; APIs and Faro stay on the application hostname. There is no frontend
+OAuth/token implementation or environment-bootstrap fetch.
+
+Each pipeline tests a static artifact, uploads assets before index, retains old
+bundles and deploys the client route without a client container. Terraform owns
+storage, app-origin CORS, scoped upload permissions and session infrastructure.
+The app/API charts own routing and authentication middleware.
+
+Alignment preserves stack-specific security: Skeleton uses Spring CSRF/Angular
+XSRF, Cooking uses strict mutation Origin checks, and Observatory's JWT-protected
+API is read-only. Observatory also supplies a strict CSP via
+`contentSecurityPolicy`; all clients receive the chart's fixed `no-referrer` and
+`nosniff` document headers.
