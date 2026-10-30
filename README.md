@@ -50,9 +50,9 @@ Vault: the proxy Service, port and mode. It passes that object to
 both charts' `auth` value; each chart creates its own middleware and policies.
 Both upgrades reset Helm values and supply the intended configuration, removing
 obsolete policy-list settings. New charts do not accept manual filter lists.
-No generated filter lists are read or assembled. Separate `client-runtime-config`
-supplies the public
-`clientLogUrl` and `clientAppName` map to the client chart's `runtimeConfig` value.
+No generated filter lists are read or assembled. Faro's public app name and
+same-origin collector path are compiled into the client bundle. Deployment omits
+`runtimeConfig`; `--reset-values` removes the former index-config middleware.
 The deploy identity has read access scoped to those deployment secrets. Backend
 session/login URL variables are no longer consumed. The client chart keeps its
 own route but creates no Deployment, environment Secret or probes in storage mode.
@@ -62,23 +62,20 @@ All apps use the host-only `__Host-session` cookie; separate hostnames keep brow
 sessions separate. Hello is always hosted at `/`, including all nested UI routes.
 
 The app tests use mock authentication. Playwright injects a mock-issued bearer
-token into browser API requests, supplies profile data and injects public runtime
-config into documents. Backend JWT
+token into browser API requests and supplies profile data. Documents are served
+without body rewriting. Backend JWT
 validation and Spring CSRF checks stay enabled. Test pods run the app, database, mock OIDC/AI services
 and routing, without oauth2-proxy or Redis. Playwright targets `http://localhost:8150`.
 
-The built HTML contains `<script>window.__APP_CONFIG__ = "__APP_CONFIG_JSON__";</script>`
-before Angular. The client-owned body middleware replaces the quoted marker with
-HTML-escaped JSON; startup rejects a missing configuration. Enable the pinned
-Traefik rewritebody v0.3.1 plugin through the ingress module before deployment.
-Keep index HTML uncompressed at the origin; the client route sets no-store and
-strips validators/conditional/range headers before injection.
+The build contains all public frontend configuration; there is no HTML bootstrap
+marker, configuration fetch or response-body middleware. The gateway authenticates
+documents and rewrites deep links to index, with no-store and credential stripping.
 
 Faro uses the absolute same-origin URL `https://hello.<domain>/_telemetry/collect`.
 The logging module owns that exact collector route, rewriting to `/collect` and
 stripping app cookies/bearer/CSRF headers. Browser collection needs no cross-origin
 preflight; the receiver keeps its explicit origin allowlist and rate limits.
-Full Gateway/proxy/plugin integration lives in the shared chart regression.
+Full Gateway/proxy integration lives in the shared chart regression.
 
 ## One image per Spring profile
 

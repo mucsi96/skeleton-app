@@ -71,7 +71,7 @@ Reference application demonstrating patterns for:
 
 ## Architecture
 
-- **client/** - Angular SPA with chart-owned Gateway document routing, direct Azure Blob assets and inline runtime config
+- **client/** - Angular SPA with chart-owned Gateway document routing, direct Azure Blob assets and build-time Faro configuration
 - **server/** - Spring Boot 4 REST API with PostgreSQL, Spring AI
 - **mock_anthropic_server/** - Express mock for Claude API
 - **test/** - Playwright E2E tests
@@ -277,11 +277,11 @@ Node/npm; there is no client Dockerfile or image publication. Node prepares asse
 URLs, Azure CLI batch-uploads assets, and index is uploaded last. Local/E2E tests
 mount `client/dist` into stock nginx behind Traefik. See docs/static-hosting.md.
 
-### Runtime Configuration and Document Authentication
-- The client chart owns SPA routes, document auth, index rewriting and config injection. API charts own API auth/header policies. The platform supplies only the proxy, login configuration and credentials.
-- Keep `<script>window.__APP_CONFIG__ = "__APP_CONFIG_JSON__";</script>` before Angular. The client chart replaces the quoted marker with public JSON.
-- Angular validates `clientLogUrl`/`clientAppName` and bootstraps directly. There is no environment endpoint or config fetch.
-- Deploy reads the proxy reference from `forward-auth-config.auth` and passes it to each chart's `auth` value. Public config is separate `client-runtime-config`. Storage metadata is `client-storage-config`; pass its hostname to the dedicated `static-client-app` chart's `staticOrigin`. Keep the client HTTPRoute; production has no client Deployment or probes. Do not pass generated policy lists.
+### Build Configuration and Document Authentication
+- The client chart owns SPA routes, document auth and index URL rewriting. API charts own API auth/header policies. The platform supplies the proxy, login configuration and credentials.
+- Compile the public Faro app name and `/_telemetry/collect` path into the bundle; resolve the URL against the browser's application origin, not the Blob asset origin.
+- Bootstrap directly without a global config, HTML marker, environment endpoint or config fetch. Omit chart `runtimeConfig` and use `--reset-values` to remove its former middleware.
+- Deploy reads the proxy reference from `forward-auth-config.auth` and passes it to each chart's `auth` value. Storage metadata is `client-storage-config`; pass its hostname to the dedicated `static-client-app` chart's `staticOrigin`. Keep the client HTTPRoute; production has no client Deployment or probes. Do not pass generated policy lists.
 - Faro uses the exact same-origin logging route with credential stripping and collector origin/rate-limit controls.
 - No frontend auth service/interceptor/guard or sign-in/out UI. Userinfo is read-only profile data.
 - Use Spring Security SPA CSRF and Angular's built-in XSRF support. Keep CSRF checks

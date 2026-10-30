@@ -15,7 +15,11 @@ try {
       assets.push(request.url());
     }
   });
+  await page.route('**/_telemetry/collect', route => route.fulfill({ status: 202, json: {} }));
+  const telemetry = page.waitForRequest(request => request.url() === `${appOrigin}/_telemetry/collect` && request.method() === 'POST');
   await page.goto(`${appOrigin}/?source=bookmark`);
+  assert.equal((await telemetry).postDataJSON().meta.app.name, 'hello-client');
+  assert.equal(await page.evaluate(() => '__APP_CONFIG__' in window), false);
   await expect(page.getByRole('heading', { name: 'Welcome, World' })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(async () => {
