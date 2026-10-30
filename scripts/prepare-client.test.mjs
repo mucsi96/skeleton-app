@@ -15,7 +15,6 @@ async function fixture(t) {
   const output = join(root, 'output');
   await mkdir(input);
   await writeFile(join(input, 'index.html'), `<!doctype html><base href="/">
-<script>window.__APP_CONFIG__ = "__APP_CONFIG_JSON__";</script>
 <link rel="stylesheet" href="styles.css"><link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="/favicon.png"><link rel="modulepreload" href="chunk.js">
 <script src="main.js" type="module" crossorigin></script>`);
@@ -29,7 +28,6 @@ test('separates document and assets, preserves bundles and app navigation', asyn
   await prepareClient(input, output, assetUrl, appOrigin);
   const html = await readFile(join(output, 'documents/index.html'), 'utf8');
   assert(html.includes('<base href="/">'));
-  assert(html.includes('"__APP_CONFIG_JSON__"'));
   for (const file of ['styles.css', 'manifest.webmanifest', 'favicon.png', 'chunk.js', 'main.js']) assert(html.includes(assetUrl + file));
   assert.equal((html.match(/crossorigin="anonymous"/g) ?? []).length, 5);
   await assert.rejects(readFile(join(output, 'assets/index.html')), { code: 'ENOENT' });
@@ -44,10 +42,4 @@ test('rejects symlinks before copying the artifact', async t => {
   const { input, output } = await fixture(t);
   await symlink('/etc/passwd', join(input, 'linked-file'));
   await assert.rejects(prepareClient(input, output, assetUrl, appOrigin), /Unexpected symlink/);
-});
-
-test('rejects a build without the runtime configuration marker', async t => {
-  const { input, output } = await fixture(t);
-  await writeFile(join(input, 'index.html'), '<html></html>');
-  await assert.rejects(prepareClient(input, output, assetUrl, appOrigin), /Missing runtime configuration marker/);
 });

@@ -2,6 +2,10 @@
 
 Snapshot: 20 October 2026. Read repository AGENTS.md before continuing.
 
+Historical snapshot: current clients use Azure static hosting and compile Faro
+settings into their bundles. The inline-config marker and Traefik body-rewrite
+guidance below is superseded by `docs/static-hosting.md` and issue #105.
+
 Follow-up (23 October 2026): client chart `healthPath` was removed. All three
 probes now use `/`; nginx explicitly serves `/index.html` at the origin root.
 Deployment no longer supplies a probe-path override. Nested SPA routing remains
@@ -9,7 +13,7 @@ Gateway-owned. The snapshot details below describe the earlier implementation.
 
 ## Start here
 
-- Architecture and junior-friendly migration guide:
+- Current architecture summary and diff links:
   https://github.com/mucsi96/skeleton-app/issues/105
 - Charts PR (open, not merged at this snapshot):
   https://github.com/mucsi96/k8s-helm-charts/pull/22

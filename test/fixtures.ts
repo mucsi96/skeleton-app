@@ -3,8 +3,7 @@ import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { cleanupDbRecords, insertGreeting } from './utils';
 
-export const test = base.extend<{ apiHeaders: Record<string, string>; clientLogUrl: string }>({
-  clientLogUrl: ['', { option: true }],
+export const test = base.extend<{ apiHeaders: Record<string, string> }>({
   apiHeaders: async ({ request }, use) => {
     const issuer = process.env.TEST_OAUTH2_URL ?? 'http://localhost:8050';
     const redirect = 'http://localhost/test';
@@ -19,24 +18,14 @@ export const test = base.extend<{ apiHeaders: Record<string, string>; clientLogU
     if (!tokens.ok()) throw new Error(`Mock token request failed: ${tokens.status()}`);
     await use({ Authorization: `Bearer ${(await tokens.json()).access_token}` });
   },
-  page: async ({ page, apiHeaders, clientLogUrl }, use, testInfo: TestInfo) => {
+  page: async ({ page, apiHeaders }, use, testInfo: TestInfo) => {
     await cleanupDbRecords();
     await insertGreeting('World', 'Welcome to the skeleton app!');
 
     // Stand in for the gateway's verified identity; no proxy/session stack in app tests.
     await page.route('**/api/**', route => route.continue({ headers: { ...route.request().headers(), ...apiHeaders } }));
     await page.route('**/oauth2/userinfo', route => route.fulfill({ json: { email: 'owner@example.test', additionalClaims: { name: 'Owner' } } }));
-    await page.route('**/*', async route => {
-      if (!route.request().isNavigationRequest()) return route.fallback();
-      const response = await route.fetch();
-      const body = (await response.text()).replace(/["']__APP_CONFIG_JSON__["']/, JSON.stringify({
-        clientLogUrl, clientAppName: 'hello-client',
-      }));
-      const headers = { ...response.headers() };
-      delete headers['content-length'];
-      delete headers['content-encoding'];
-      await route.fulfill({ response, headers, body });
-    });
+    await page.route('**/_telemetry/collect', route => route.fulfill({ status: 202, body: 'ok' }));
 
     // Reset mock AI server
     try {
