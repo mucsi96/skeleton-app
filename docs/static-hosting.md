@@ -2,8 +2,8 @@
 
 Production index HTML lives in Azure Storage's `$web` container. All other files
 live in its public-read `assets` Blob container. The API uses `mucsi96/spring-app`
-**36.0.0** on Kubernetes. The `hello-client` release uses
-`mucsi96/static-client-app` **4.0.0** for document-only gateway routing.
+**37.0.0** on Kubernetes. The `hello-client` release uses
+`mucsi96/static-client-app` **5.0.0** for document-only gateway routing.
 
 Terraform supplies `client-storage-config` (`account_name`, `hostname`, `assets_base_url`) alongside
 `forward-auth-config`. GitHub's existing federated deploy
@@ -50,7 +50,7 @@ API calls.
 
 ## Shared contract with Cooking and Observatory
 
-All three clients use `static-client-app` 4.0.0 and the same hosting/auth deployment
+All three clients use `static-client-app` 5.0.0 and the same hosting/auth deployment
 secrets: `forward-auth-config.auth` and
 `client-storage-config`. The gateway authenticates documents before rewriting
 deep links. No response-body configuration middleware is installed. Browser assets use anonymous Blob

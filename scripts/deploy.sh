@@ -33,8 +33,8 @@ CLIENT_ORIGIN=$(jq -er '.hostname | select(test("^[a-z0-9.-]+\\.web\\.core\\.win
 echo "Updating Helm repositories..."
 helm repo add mucsi96 https://mucsi96.github.io/k8s-helm-charts --force-update
 
-springAppChartVersion=36.0.0
-staticClientAppChartVersion=4.0.0
+springAppChartVersion=37.0.0
+staticClientAppChartVersion=5.0.0
 
 helm status "$AUTH_RELEASE" --namespace hello >/dev/null
 helm show chart mucsi96/spring-app --version "$springAppChartVersion" >/dev/null
