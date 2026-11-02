@@ -28,8 +28,11 @@ The official `azure/login` action authenticates with OIDC, then `azure/cli` runs
 `az storage blob upload-batch` for assets. Azure CLI infers asset MIME types;
 the manifest is explicitly published as `application/manifest+json`. Index HTML
 is uploaded separately, last. Failed asset uploads leave the previous
-index intact. Old bundles are retained for open browser tabs; asset responses
-revalidate and index is never cached. Do not delete all blobs during deployment.
+index intact. Assets are published under `releases/<workflow-run-id>-<attempt>/`
+with `Cache-Control: public, max-age=31536000, immutable`, including the manifest
+and icons. Each deployment gets new URLs, including workflow reruns. Old releases
+are retained for open browser tabs; index uses `no-store`. Do not delete all blobs
+during deployment.
 
 The storage website is publicly readable, including raw index HTML, by Azure's
 static website design. It contains only public build resources. Faro's app name

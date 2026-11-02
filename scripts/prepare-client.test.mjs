@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { prepareClient } from './prepare-client.mjs';
 
-const assetUrl = 'https://fixture.blob.core.windows.net/assets/';
+const assetUrl = 'https://fixture.blob.core.windows.net/assets/releases/12345-2/';
 const appOrigin = 'https://hello.example.test';
 
 async function fixture(t) {
