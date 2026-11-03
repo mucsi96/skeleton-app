@@ -1,0 +1,29 @@
+.skeleton {
+  display: grid;
+  gap: 1rem;
+}
+
+.line, .card {
+  display: block;
+  background: var(--bt-surface-2);
+  border-radius: 8px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.line {
+  height: 2rem;
+  max-width: 50%;
+}
+
+.card {
+  height: 7rem;
+  margin-top: 1rem;
+}
+
+@keyframes pulse {
+  50% { opacity: .45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line, .card { animation: none; }
+}

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, Heading, Text } from '@mucsi96/react-ui';
 import { fetchJson, greetingSchema } from './api';
 import { LoadingGreeting } from './LoadingGreeting';
+import styles from './Home.module.css';
 
 export default function Home() {
   const { data, error, isPending, refetch } = useQuery({
@@ -14,6 +15,6 @@ export default function Home() {
   return <>
     <Heading level={1}>Welcome, {data.name}</Heading>
     <Text muted>{data.message}</Text>
-    <Card className="greeting"><Text>{data.aiGreeting}</Text></Card>
+    <Card className={styles.greeting}><Text>{data.aiGreeting}</Text></Card>
   </>;
 }

@@ -1,0 +1,46 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid var(--bt-outline);
+}
+
+.topbar a {
+  color: inherit;
+  font-size: 1.3rem;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.profile { position: relative; }
+
+.profile summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  background: var(--bt-surface-2);
+  cursor: pointer;
+  list-style: none;
+}
+
+.profile summary::-webkit-details-marker { display: none; }
+
+.profileName {
+  position: absolute;
+  right: 0;
+  top: 48px;
+  min-width: 160px;
+  padding: 1rem;
+  background: var(--bt-surface-1);
+  border: 1px solid var(--bt-outline);
+  border-radius: 8px;
+}
+
+@media (max-width: 600px) {
+  .topbar { padding: 1rem; }
+}

@@ -21,6 +21,8 @@ This repository is the skeleton-sync source; it does not synchronize from itself
 - TypeScript: strict types, `const`, functional array methods, string literals over enums.
 - React: function components, hooks, TanStack Query for server state, Zod validation at API boundaries.
 - Use `@mucsi96/react-ui` components and its documented APIs, matching Observatory.
+- Colocate component styles in CSS Modules (`*.module.css`). Keep only theme tokens,
+  typography defaults, and resets in the global stylesheet.
 - Dark theme, accessible semantic controls, skeleton loading states, actionable error states.
 - Tests should describe user behavior. Use Playwright role/text/label selectors.
 
