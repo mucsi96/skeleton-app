@@ -1,8 +1,8 @@
 # Static client deployment
 
 Production index HTML lives in Azure Storage's `$web` container. All other files
-live in its public-read `assets` Blob container. The API uses `mucsi96/spring-app`
-**37.0.0** on Kubernetes. The `hello-client` release uses
+live in its public-read `assets` Blob container. The API uses `mucsi96/rust-app`
+**7.0.0** on Kubernetes. The `hello-client` release uses
 `mucsi96/static-client-app` **5.0.0** for document-only gateway routing.
 
 Terraform supplies `client-storage-config` (`account_name`, `hostname`, `assets_base_url`) alongside
@@ -10,7 +10,7 @@ Terraform supplies `client-storage-config` (`account_name`, `hostname`, `assets_
 identity receives Storage Blob Data Contributor separately on `$web` and `assets`.
 Uploads use `--auth-mode login`; no account keys or SAS tokens are distributed.
 
-The pipeline builds Angular directly with `actions/setup-node`, `npm ci` and
+The pipeline builds React/Vite directly with `actions/setup-node`, `npm ci` and
 `npm run build`. It passes `client/dist` as the `client-static` artifact to tests
 and deployment, and attaches `client-static.tar.gz` to new client releases.
 There is no client Dockerfile, image build or image publication. E2E tests mount
@@ -21,7 +21,7 @@ Traefik; Traefik routes requests but does not serve files itself.
 links to absolute Blob URLs with anonymous CORS requests, and keeps the document
 base at `/`. Manifest navigation fields stay on the app origin. Module imports
 and external CSS font URLs resolve relative to their Blob-hosted parents. Roboto
-and Material Icons are bundled locally. Preparation separates `assets/` and
+is bundled locally. Preparation separates `assets/` and
 `documents/index.html` without changing the tested bundles.
 
 The official `azure/login` action authenticates with OIDC, then `azure/cli` runs
@@ -65,8 +65,8 @@ assets before index and deploys the client route without a client container. Ter
 storage, app-origin CORS, scoped upload permissions and session infrastructure.
 The app/API charts own routing and authentication middleware.
 
-Alignment preserves stack-specific security: Skeleton uses Spring CSRF/Angular
-XSRF, Cooking uses strict mutation Origin checks, and Observatory's JWT-protected
+Alignment preserves stack-specific security: Skeleton uses host-only double-submit
+CSRF cookies with its same-origin fetch helper, Cooking uses strict mutation Origin checks, and Observatory's JWT-protected
 API is read-only. Observatory also supplies a strict CSP via
 `contentSecurityPolicy`; all clients receive the chart's fixed `no-referrer` and
 `nosniff` document headers.

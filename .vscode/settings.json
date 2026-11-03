@@ -1,6 +1,5 @@
 {
-  "java.compile.nullAnalysis.mode": "disabled",
-  "java.configuration.updateBuildConfiguration": "interactive",
+  "rust-analyzer.linkedProjects": ["server/Cargo.toml"],
   "vs-kubernetes": {
     "vs-kubernetes.namespace": "skeleton-app",
     "vs-kubernetes.kubeconfig": "${workspaceFolder}/.kube/config"

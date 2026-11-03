@@ -13,7 +13,7 @@ export async function prepareClient(directory, destination, assetBaseUrl, appOri
   const documents = join(destination, 'documents');
   await mkdir(documents, { recursive: true });
   await cp(root, assets, { recursive: true });
-  // Angular emits quoted attributes; only script/link asset URLs are rewritten.
+  // Vite emits quoted attributes; only script/link asset URLs are rewritten.
   const html = index.replace(/<(script|link)\b[^>]*>/gi, tag => {
     const attribute = /^<script\b/i.test(tag) ? 'src' : 'href';
     const pattern = new RegExp(`\\b${attribute}=(['"])(.*?)\\1`, 'i');
