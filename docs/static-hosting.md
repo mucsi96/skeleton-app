@@ -27,9 +27,12 @@ and Material Icons are bundled locally. Preparation separates `assets/` and
 The official `azure/login` action authenticates with OIDC, then `azure/cli` runs
 `az storage blob upload-batch` for assets. Azure CLI infers asset MIME types;
 the manifest is explicitly published as `application/manifest+json`. Index HTML
-is uploaded separately, last. Failed asset uploads leave the previous
-index intact. Old bundles are retained for open browser tabs; asset responses
-revalidate and index is never cached. Do not delete all blobs during deployment.
+is uploaded separately, last. Before uploading, deployment empties `$web`, then
+`assets`, including old release directories. Only the latest assets are published,
+directly at the asset root, with `Cache-Control: public, max-age=31536000, immutable`,
+including the manifest and icons; index uses `no-store`. Downtime is intentional,
+and a failed upload leaves the site unavailable until a successful deployment.
+Deleting blobs does not clear browser caches for unchanged asset URLs.
 
 The storage website is publicly readable, including raw index HTML, by Azure's
 static website design. It contains only public build resources. Faro's app name
@@ -57,8 +60,8 @@ deep links. No response-body configuration middleware is installed. Browser asse
 requests; APIs and Faro stay on the application hostname. There is no frontend
 OAuth/token implementation or environment-bootstrap fetch.
 
-Each pipeline tests a static artifact, uploads assets before index, retains old
-bundles and deploys the client route without a client container. Terraform owns
+Each pipeline tests a static artifact, empties both static containers, uploads
+assets before index and deploys the client route without a client container. Terraform owns
 storage, app-origin CORS, scoped upload permissions and session infrastructure.
 The app/API charts own routing and authentication middleware.
 
