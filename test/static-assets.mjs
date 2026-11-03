@@ -23,7 +23,7 @@ try {
   await expect(page.getByRole('heading', { name: 'Welcome, World' })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(async () => {
-    for (const font of ['400 16px Roboto', '400 24px "Material Icons"']) {
+    for (const font of ['400 16px Roboto']) {
       if (!(await document.fonts.load(font)).length) throw new Error(`Missing bundled font: ${font}`);
     }
   });

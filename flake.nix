@@ -18,9 +18,11 @@
         # rootless Podman relies on setuid newuidmap/newgidmap helpers and
         # /etc/subuid mappings that a Nix store binary cannot provide.
         packages = [
-          pkgs.temurin-bin-21   # JDK 21 (Temurin), matching the previous SDKMAN install
-          pkgs.maven
-          pkgs.nodejs_22        # matches the Node version used in CI
+          pkgs.rustup          # server/rust-toolchain.toml pins the Rust toolchain
+          pkgs.pkg-config
+          pkgs.cmake
+          pkgs.gcc
+          pkgs.nodejs_24
           pkgs.jq
           pkgs.kubectl
           pkgs.kubernetes-helm
@@ -28,8 +30,7 @@
         ];
 
         shellHook = ''
-          export JAVA_HOME="${pkgs.temurin-bin-21}"
-          echo "skeleton-app dev shell: jdk21 (Temurin), maven, node $(node --version), jq, kubectl, helm, az"
+          echo "skeleton-app dev shell: rustup, node $(node --version), jq, kubectl, helm, az"
           echo "Podman is a distro-level prerequisite (e.g. 'apt install podman' on WSL) and is not provided by this flake."
         '';
       };

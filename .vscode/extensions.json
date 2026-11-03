@@ -1,8 +1,8 @@
 {
     "recommendations": [
-        "vmware.vscode-boot-dev-pack",
-        "vscjava.vscode-java-pack",
-        "angular.ng-template",
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "dbaeumer.vscode-eslint",
         "editorconfig.editorconfig",
         "esbenp.prettier-vscode",
         "anweber.vscode-httpyac",

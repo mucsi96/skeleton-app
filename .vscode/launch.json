@@ -16,14 +16,21 @@
       "type": "node"
     },
     {
-      "type": "java",
+      "type": "lldb",
       "name": "Start server",
       "request": "launch",
       "cwd": "${workspaceFolder}/server",
-      "mainClass": "io.github.mucsi96.skeleton.SkeletonApplication",
-      "args": "--spring.profiles.active=local",
+      "cargo": { "args": ["build", "--bin", "skeleton-server", "--manifest-path", "${workspaceFolder}/server/Cargo.toml"] },
       "env": {
-        "AZURE_KEYVAULT_ENDPOINT": "https://p06-hello.vault.azure.net"
+        "APP_ENV": "local",
+        "LISTEN_ADDR": "127.0.0.1:8053",
+        "DB_URL": "postgres://localhost:5450/skeleton",
+        "DB_USERNAME": "postgres",
+        "DB_PASSWORD": "postgres",
+        "OIDC_ISSUER": "http://localhost:8050/default",
+        "API_CLIENT_ID": "mock-api-client-id",
+        "ANTHROPIC_BASE_URL": "http://localhost:3050",
+        "ANTHROPIC_API_KEY": "mock-anthropic-key"
       }
     }
   ]

@@ -95,10 +95,10 @@ spec:
     - name: server
       image: localhost/skeleton-app-server:test
       env:
-        - name: SERVER_PORT
-          value: "8054"
-        - name: SPRING_ACTUATOR_PORT
-          value: "8152"
+        - name: APP_ENV
+          value: test
+        - name: LISTEN_ADDR
+          value: "0.0.0.0:8054"
         - name: DB_URL
           value: jdbc:postgresql://localhost:5432/test
         - name: DB_USERNAME
@@ -109,16 +109,14 @@ spec:
           value: mock-anthropic-key
         - name: ANTHROPIC_BASE_URL
           value: http://localhost:3050
-        - name: MOCK_OAUTH2_SERVER_URI
-          value: http://localhost:8050
+        - name: OIDC_ISSUER
+          value: http://localhost:8050/default
+        - name: API_CLIENT_ID
+          value: mock-api-client-id
       livenessProbe:
-        httpGet:
-          path: /actuator/health/readiness
-          port: 8152
-        # The native executable is serving within a second of the container
-        # starting, so there is nothing to wait for before the first probe. The
-        # window stays generous because readiness still waits for the db
-        # container and the Liquibase migration.
+        exec:
+          command: ["/app/skeleton-server", "--healthcheck"]
+        # Readiness waits for the database migration and OIDC discovery.
         initialDelaySeconds: 2
         periodSeconds: 2
         failureThreshold: 30

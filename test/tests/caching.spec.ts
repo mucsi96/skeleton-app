@@ -27,7 +27,7 @@ test('serves hashed bundles with long-lived immutable caching', async ({ request
   );
   expect(bundlePaths.length).toBeGreaterThan(0);
 
-  const responses = await Promise.all(bundlePaths.map((path) => request.get(`/${path}`)));
+  const responses = await Promise.all(bundlePaths.map((path) => request.get(new URL(path, 'http://localhost:8150/').href)));
   responses.forEach((response) => {
     expect(response.headers()['cache-control']).toContain('immutable');
   });
