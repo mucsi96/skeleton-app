@@ -1,5 +1,12 @@
-use skeleton_server::MIGRATOR;
+use migration::Migrator;
+use sea_orm::SqlxPostgresConnector;
+use sea_orm_migration::MigratorTrait;
 use sqlx::PgPool;
+
+async fn migrate(pool: &PgPool) {
+    let db = SqlxPostgresConnector::from_sqlx_postgres_pool(pool.clone());
+    Migrator::up(&db, None).await.unwrap();
+}
 
 #[sqlx::test(migrations = false)]
 async fn migration_metadata_can_live_in_app_schema(pool: PgPool) {
@@ -13,8 +20,8 @@ async fn migration_metadata_can_live_in_app_schema(pool: PgPool) {
         .clone()
         .options([("search_path", "hello")]);
     let app_pool = PgPool::connect_with(options).await.unwrap();
-    MIGRATOR.run(&app_pool).await.unwrap();
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM hello._sqlx_migrations")
+    migrate(&app_pool).await;
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM hello.seaql_migrations")
         .fetch_one(&pool)
         .await
         .unwrap();
@@ -24,8 +31,8 @@ async fn migration_metadata_can_live_in_app_schema(pool: PgPool) {
 
 #[sqlx::test(migrations = false)]
 async fn fresh_database_is_seeded_once(pool: PgPool) {
-    MIGRATOR.run(&pool).await.unwrap();
-    MIGRATOR.run(&pool).await.unwrap();
+    migrate(&pool).await;
+    migrate(&pool).await;
     let rows: Vec<(i64, String, String)> =
         sqlx::query_as("SELECT id, name, message FROM hello.greetings")
             .fetch_all(&pool)
@@ -45,7 +52,7 @@ async fn adopts_liquibase_database_without_changing_rows_or_sequence(pool: PgPoo
         CREATE TABLE hello.greetings (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, message TEXT NOT NULL);
         INSERT INTO hello.greetings (name, message) VALUES ('Existing user', 'Persisted message');")
         .execute(&pool).await.unwrap();
-    MIGRATOR.run(&pool).await.unwrap();
+    migrate(&pool).await;
     let rows: Vec<(i64, String, String)> =
         sqlx::query_as("SELECT id, name, message FROM hello.greetings")
             .fetch_all(&pool)
@@ -74,7 +81,7 @@ async fn existing_empty_table_stays_empty(pool: PgPool) {
     sqlx::raw_sql("CREATE SCHEMA hello;
         CREATE TABLE hello.greetings (id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, message TEXT NOT NULL);")
         .execute(&pool).await.unwrap();
-    MIGRATOR.run(&pool).await.unwrap();
+    migrate(&pool).await;
     let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM hello.greetings")
         .fetch_one(&pool)
         .await

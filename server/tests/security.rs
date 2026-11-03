@@ -14,7 +14,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 use rsa::{RsaPrivateKey, pkcs8::EncodePrivateKey, rand_core::OsRng, traits::PublicKeyParts};
 use serde_json::{Value, json};
-use skeleton_server::{
+use skeleton_server::middleware::{
     auth::{Auth, authorize},
     csrf,
 };

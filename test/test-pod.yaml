@@ -95,16 +95,12 @@ spec:
     - name: server
       image: localhost/skeleton-app-server:test
       env:
-        - name: APP_ENV
+        - name: LOCO_ENV
           value: test
-        - name: LISTEN_ADDR
-          value: "0.0.0.0:8054"
-        - name: DB_URL
-          value: jdbc:postgresql://localhost:5432/test
-        - name: DB_USERNAME
-          value: postgres
-        - name: DB_PASSWORD
-          value: postgres
+        - name: PORT
+          value: "8054"
+        - name: DATABASE_URL
+          value: postgres://postgres:postgres@localhost:5432/test
         - name: ANTHROPIC_API_KEY
           value: mock-anthropic-key
         - name: ANTHROPIC_BASE_URL

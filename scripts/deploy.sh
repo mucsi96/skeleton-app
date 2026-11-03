@@ -42,8 +42,7 @@ helm show chart mucsi96/static-client-app --version "$staticClientAppChartVersio
 
 echo "Deploying server: $SERVER_IMAGE using rust-app chart $serverChartVersion"
 
-# Keep the release name and workload identity while moving to the native API
-# chart. CPU limits are omitted; memory remains bounded at 256Mi.
+# CPU limits are omitted; memory remains bounded at 256Mi.
 helm upgrade $SERVER_RELEASE_NAME mucsi96/rust-app \
     --install \
     --reset-values \
@@ -54,7 +53,7 @@ helm upgrade $SERVER_RELEASE_NAME mucsi96/rust-app \
     --set-json auth="$PROXY_AUTH" \
     --set clientId=$API_CLIENT_ID \
     --set serviceAccountName=hello-api-workload-identity \
-    --set env.APP_ENV=prod \
+    --set env.LOCO_ENV=production \
     --set env.AZURE_KEYVAULT_ENDPOINT=$AZURE_KEYVAULT_ENDPOINT \
     --set resources.requests.memory=64Mi \
     --set resources.requests.cpu=25m \
