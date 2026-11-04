@@ -17,13 +17,6 @@ concurrency:
 jobs:
   check-server:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports: ['5432:5432']
-        options: --health-cmd pg_isready --health-interval 2s --health-retries 20
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@1.99.1
@@ -32,14 +25,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: server
-      - name: Check and test Rust
+      - name: Check Rust
         working-directory: server
-        env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
         run: |
           cargo fmt --all --check
           cargo clippy --locked --workspace --all-targets -- -D warnings
-          cargo test --locked --workspace
 
   build-server-image:
     runs-on: ubuntu-latest

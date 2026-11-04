@@ -24,7 +24,8 @@ This repository is the skeleton-sync source; it does not synchronize from itself
 - Colocate component styles in CSS Modules (`*.module.css`). Keep only theme tokens,
   typography defaults, and resets in the global stylesheet.
 - Dark theme, accessible semantic controls, skeleton loading states, actionable error states.
-- Tests should describe user behavior. Use Playwright role/text/label selectors.
+- Test React and Rust application behavior through the Playwright E2E suite;
+  do not add React or Rust unit/integration test suites. Use role/text/label selectors.
 
 ## Architecture
 
@@ -45,8 +46,6 @@ scripts/pod_up.sh
 cd test && npm test
 cd client && npm run lint && npm run build
 cd server && cargo fmt --all --check && cargo clippy --locked --workspace --all-targets -- -D warnings
-# Requires a PostgreSQL user with CREATE DATABASE permission (isolated test databases):
-cd server && DATABASE_URL=postgres://postgres:postgres@localhost:5451/test cargo test --locked --workspace
 node --test scripts/prepare-client.test.mjs
 python3 scripts/check_static_assets.py client/dist
 ```

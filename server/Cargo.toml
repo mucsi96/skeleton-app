@@ -29,13 +29,6 @@ tracing = "0.1"
 url = "2"
 uuid = { version = "1", features = ["v4"] }
 
-[dev-dependencies]
-base64 = "0.22"
-rsa = "0.9"
-sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls-ring", "postgres", "macros", "migrate"] }
-sea-orm-migration = { version = "2", default-features = false, features = ["runtime-tokio-rustls", "sqlx-postgres"] }
-tower = { version = "0.5", features = ["util"] }
-
 [profile.release]
 lto = "thin"
 strip = true

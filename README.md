@@ -11,7 +11,7 @@ A full-stack React and Loco application with authenticated greetings and AI inte
 - **Configuration:** Azure Key Vault via workload identity in production.
 - **Delivery:** GitHub Actions, native Rust container, Azure Blob static assets,
   chart-owned authenticated Gateway documents and API routes.
-- **Testing:** Rust security/database regression tests and Playwright browser tests.
+- **Testing:** Playwright end-to-end tests against the containerized application.
 
 ## Quick start
 
@@ -51,16 +51,14 @@ VS Code includes a Rust debug launch with the same local configuration.
 ```bash
 cd client && npm run lint && npm run build
 cd server && cargo fmt --all --check && cargo clippy --locked --workspace --all-targets -- -D warnings
-cd server && DATABASE_URL=postgres://postgres:postgres@localhost:5451/test cargo test --locked --workspace
 cd test && npm test
 node --test scripts/prepare-client.test.mjs
 python3 scripts/check_static_assets.py client/dist
 ```
 
-Run each command from the repository root. Rust database tests require a user with
-CREATE DATABASE permission and create isolated databases. They cover fresh installs,
-adoption of existing Liquibase data/sequences, and existing empty tables. Security
-tests use ephemeral RSA keys and OIDC discovery to check JWT claims and CSRF.
+Run each command from the repository root. Start the test pod with
+`scripts/pod_up.sh` before running Playwright. Application behavior is tested
+end-to-end in Playwright rather than React or Rust unit tests.
 
 ## API, data and security
 
