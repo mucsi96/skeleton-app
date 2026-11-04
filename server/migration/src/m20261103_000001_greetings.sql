@@ -1,5 +1,4 @@
--- Adopt the existing Liquibase-managed table without changing rows, IDs, or
--- sequences. Seed only a new database, never an existing (even empty) table.
+-- Seed only a new table. Existing rows, IDs and sequences are never modified.
 CREATE SCHEMA IF NOT EXISTS hello;
 DO $$
 BEGIN

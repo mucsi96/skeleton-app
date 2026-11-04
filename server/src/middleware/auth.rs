@@ -39,7 +39,7 @@ struct Claims {
     roles: Vec<String>,
 }
 
-fn endpoint(value: &str) -> anyhow::Result<()> {
+pub fn validate_endpoint(value: &str) -> anyhow::Result<()> {
     let url = url::Url::parse(value)?;
     let local = matches!(url.host_str(), Some("127.0.0.1" | "localhost" | "[::1]"));
     ensure!(
@@ -58,7 +58,7 @@ fn endpoint(value: &str) -> anyhow::Result<()> {
 
 impl Auth {
     pub async fn new(issuer: String, audience: String) -> anyhow::Result<Self> {
-        endpoint(&issuer)?;
+        validate_endpoint(&issuer)?;
         ensure!(!audience.trim().is_empty(), "API audience is required");
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(10))
@@ -72,7 +72,7 @@ impl Auth {
             .json()
             .await?;
         ensure!(discovery.issuer == issuer, "OIDC issuer mismatch");
-        endpoint(&discovery.jwks_uri)?;
+        validate_endpoint(&discovery.jwks_uri)?;
         let keys = client
             .get(&discovery.jwks_uri)
             .send()
@@ -136,6 +136,9 @@ pub async fn authorize(
     request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    if request.uri().path() == "/healthz" {
+        return Ok(next.run(request).await);
+    }
     let token = request
         .headers()
         .get(header::AUTHORIZATION)

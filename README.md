@@ -1,18 +1,17 @@
 # Skeleton App
 
-Reference application for future projects, aligned with the Rust/React stack in
-[Observatory](https://github.com/mucsi96/observatory-app).
+A full-stack React and Loco application with authenticated greetings and AI integration.
 
 ## Stack
 
-- **API:** Rust 2024, Axum, Tokio, SQLx/PostgreSQL, Serde, structured tracing.
-- **Client:** React 19, Vite, TypeScript, TanStack Query, Zod, `@mucsi96/react-ui`.
+- **API:** Loco, Rust 2024, SeaORM/PostgreSQL, Tokio, typed Serde settings.
+- **Client:** React 19, Vite, TypeScript, CSS Modules, TanStack Query, Zod, `@mucsi96/react-ui`.
 - **AI:** Anthropic Messages API (`claude-sonnet-4-6`), Express mock for E2E.
 - **Authentication:** platform oauth2-proxy/Entra, HttpOnly sessions, backend JWT validation.
 - **Configuration:** Azure Key Vault via workload identity in production.
 - **Delivery:** GitHub Actions, native Rust container, Azure Blob static assets,
   chart-owned authenticated Gateway documents and API routes.
-- **Testing:** Rust security/database regression tests and Playwright browser tests.
+- **Testing:** Playwright end-to-end tests against the containerized application.
 
 ## Quick start
 
@@ -36,11 +35,11 @@ For a local Rust process, start the test pod for mock services, then:
 ```bash
 scripts/dev_db_up.sh
 cd server
-APP_ENV=local LISTEN_ADDR=127.0.0.1:8053 \
-DB_URL=postgres://localhost:5450/skeleton DB_USERNAME=postgres DB_PASSWORD=postgres \
+LOCO_ENV=development PORT=8053 \
+DATABASE_URL=postgres://postgres:postgres@localhost:5450/skeleton \
 OIDC_ISSUER=http://localhost:8050/default API_CLIENT_ID=mock-api-client-id \
 ANTHROPIC_API_KEY=mock-anthropic-key ANTHROPIC_BASE_URL=http://localhost:3050 \
-cargo run --locked
+cargo run --locked -- start
 ```
 
 `cd client && npm start` runs Vite on 4250 with `/api` proxied to 8053. A direct
@@ -51,17 +50,15 @@ VS Code includes a Rust debug launch with the same local configuration.
 
 ```bash
 cd client && npm run lint && npm run build
-cd server && cargo fmt --check && cargo clippy --locked --all-targets -- -D warnings
-cd server && DATABASE_URL=postgres://postgres:postgres@localhost:5451/test cargo test --locked
+cd server && cargo fmt --all --check && cargo clippy --locked --workspace --all-targets -- -D warnings
 cd test && npm test
 node --test scripts/prepare-client.test.mjs
 python3 scripts/check_static_assets.py client/dist
 ```
 
-Run each command from the repository root. Rust database tests require a user with
-CREATE DATABASE permission and create isolated databases. They cover fresh installs,
-adoption of existing Liquibase data/sequences, and existing empty tables. Security
-tests use ephemeral RSA keys and OIDC discovery to check JWT claims and CSRF.
+Run each command from the repository root. Start the test pod with
+`scripts/pod_up.sh` before running Playwright. Application behavior is tested
+end-to-end in Playwright rather than React or Rust unit tests.
 
 ## API, data and security
 
@@ -78,7 +75,7 @@ helper adds that proof only to same-origin mutations. OAuth tokens remain at the
 gateway; there is no sign-in/out UI or frontend token storage. `/oauth2/userinfo`
 only supplies the read-only profile menu.
 
-SQLx migrations preserve the existing `hello.greetings` table, IDs, sequence and
+SeaORM migrations preserve the existing `hello.greetings` table, IDs, sequence and
 Liquibase changelog. Only a new database is seeded. No export/reset is required.
 
 ## Runtime configuration and deployment
@@ -90,15 +87,29 @@ podman build -t localhost/skeleton-app-server:test server
 podman run --rm localhost/skeleton-app-server:test --version
 ```
 
-`APP_ENV` must be `prod`, `local` or `test`. Local/test require the environment
+`LOCO_ENV` selects `config/development.yaml`, `test.yaml` or `production.yaml`.
+Development/test require the environment
 variables shown above. Production uses `AZURE_KEYVAULT_ENDPOINT` and Azure workload
 identity (injected tenant/client/token-file variables) to read the existing secrets:
 `db-url`, `db-username`, `db-password`, `tenant-id`, `api-client-id`, `claude-api-key`.
-JDBC PostgreSQL URLs remain accepted. Secrets are loaded at startup. `LISTEN_ADDR`
-defaults to `0.0.0.0:8080`; `RUST_LOG` controls tracing verbosity.
+JDBC PostgreSQL URLs remain accepted. Secrets are loaded at startup. Production
+listens on `0.0.0.0:8080`; `PORT` overrides the port. Logging is configured in YAML.
 
-Deployment upgrades the existing `hello-server` release to `rust-app` 7.0.0,
-preserving workload identity, JWT configuration and `/api` routing. The server uses
+## Application structure
+
+- `client/src/`: function components with colocated CSS Modules; TanStack Query
+  owns server state and Zod validates API responses.
+- `server/src/app.rs`: Loco application hooks, routes and infrastructure setup.
+- `server/src/controllers/`: HTTP handlers; `models/`: SeaORM entities;
+  `services/`: typed external API clients; `middleware/`: JWT and CSRF enforcement.
+- `server/config/`: Loco environment configuration and typed application settings.
+- `server/migration/`: versioned SeaORM schema migrations, applied at startup.
+
+Run Loco commands from `server/`, for example `cargo run -- routes` or
+`cargo run -- db migrate`. Local overrides use `config/development.local.yaml`.
+
+The `hello-server` release uses `rust-app` 7.0.0 with workload identity,
+JWT configuration and `/api` routing. The server uses
 a non-root distroless image and handles SIGTERM gracefully. Production Key Vault
 access requires the existing workload identity federation and secret-read grants.
 

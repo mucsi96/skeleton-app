@@ -16,7 +16,7 @@ This repository is the skeleton-sync source; it does not synchronize from itself
 
 - Avoid fallbacks, prefer failing fast.
 - Prefer functional programming patterns and immutable data structures.
-- Rust: Axum handlers, typed Serde payloads, SQLx parameterized queries, Tokio async I/O,
+- Rust: Loco hooks and controllers, typed Serde payloads/settings, SeaORM queries, Tokio async I/O,
   `Result` error propagation, and structured tracing. Never expose internal errors or secrets in API responses.
 - TypeScript: strict types, `const`, functional array methods, string literals over enums.
 - React: function components, hooks, TanStack Query for server state, Zod validation at API boundaries.
@@ -24,12 +24,13 @@ This repository is the skeleton-sync source; it does not synchronize from itself
 - Colocate component styles in CSS Modules (`*.module.css`). Keep only theme tokens,
   typography defaults, and resets in the global stylesheet.
 - Dark theme, accessible semantic controls, skeleton loading states, actionable error states.
-- Tests should describe user behavior. Use Playwright role/text/label selectors.
+- Test React and Rust application behavior through the Playwright E2E suite;
+  do not add React or Rust unit/integration test suites. Use role/text/label selectors.
 
 ## Architecture
 
 - **client/** — React 19 + Vite static SPA, shared React UI, build-time Faro configuration.
-- **server/** — Rust 2024, Axum/Tokio, SQLx/PostgreSQL, Anthropic Messages API.
+- **server/** — Loco, Rust 2024, SeaORM/PostgreSQL, Anthropic Messages API.
 - **mock_anthropic_server/** — Express mock for Claude API.
 - **test/** — Playwright E2E, gateway identity fixtures, Podman test pod.
 - **scripts/** — Build and deployment scripts.
@@ -44,14 +45,12 @@ scripts/install_dependencies.sh
 scripts/pod_up.sh
 cd test && npm test
 cd client && npm run lint && npm run build
-cd server && cargo fmt --check && cargo clippy --locked --all-targets -- -D warnings
-# Requires a PostgreSQL user with CREATE DATABASE permission (isolated test databases):
-cd server && DATABASE_URL=postgres://postgres:postgres@localhost:5451/test cargo test --locked
+cd server && cargo fmt --all --check && cargo clippy --locked --workspace --all-targets -- -D warnings
 node --test scripts/prepare-client.test.mjs
 python3 scripts/check_static_assets.py client/dist
 ```
 
-`npm start` in client starts Vite on 4250. `cargo run --locked` in server runs the
+`npm start` in client starts Vite on 4250. `cargo run --locked -- start` in server runs the
 API; see README for required environment variables. `scripts/dev_db_up.sh` starts
 the standalone development database. Podman is a distro-level prerequisite; the
 Nix shell supplies Rust/Node and deployment tools.
@@ -60,13 +59,13 @@ Nix shell supplies Rust/Node and deployment tools.
 
 - `GET /api/greeting` returns `{name,message,aiGreeting}` and requires a valid JWT,
   `api-access` scope, and `readGreetings` role.
-- Preserve `hello.greetings` and its existing sequence. SQLx migrations adopt the
+- Preserve `hello.greetings` and its existing sequence. SeaORM migrations adopt the
   Liquibase-created table and leave legacy changelog tables intact. Seed only new
   databases; never overwrite or reseed existing user data.
-- `APP_ENV=prod` loads existing `db-url`, `db-username`, `db-password`, `tenant-id`,
+- `LOCO_ENV=production` loads existing `db-url`, `db-username`, `db-password`, `tenant-id`,
   `api-client-id`, and `claude-api-key` secrets from `AZURE_KEYVAULT_ENDPOINT` using
   Azure workload identity. JDBC PostgreSQL URLs remain accepted.
-- `APP_ENV=local|test` requires explicit DB/OIDC/Anthropic environment values.
+- `LOCO_ENV=development|test` requires explicit DATABASE_URL/OIDC/Anthropic environment values.
 - One native Rust image supports all environments at runtime. No build profiles,
   JVM, AOT processing, reflection hints, or secrets in the image.
 - `/healthz` reports readiness after migration/discovery and checks database access.

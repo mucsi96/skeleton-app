@@ -6,28 +6,28 @@ rust-version = "1.99"
 publish = false
 license = "MIT"
 
+[workspace]
+members = ["migration"]
+
 [dependencies]
 anyhow = "1"
+async-trait = "0.1"
 axum = "0.8"
 azure_identity = "1.0"
 azure_security_keyvault_secrets = "1.0"
 jsonwebtoken = { version = "11", features = ["rust_crypto"] }
+loco-rs = { version = "1.2", default-features = false, features = ["cli", "with-db"] }
+migration = { path = "migration" }
 reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "json"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls-ring", "postgres", "migrate", "macros"] }
+sea-orm = { version = "2", default-features = false, features = ["macros", "sqlx-postgres", "runtime-tokio-rustls"] }
+thiserror = "2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
-tower-http = { version = "0.7", features = ["trace"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = "2"
 uuid = { version = "1", features = ["v4"] }
-
-[dev-dependencies]
-base64 = "0.22"
-rsa = "0.9"
-tower = { version = "0.5", features = ["util"] }
 
 [profile.release]
 lto = "thin"
