@@ -47,7 +47,6 @@ cd test && npm test
 cd client && npm run lint && npm run build
 cd server && cargo fmt --all --check && cargo clippy --locked --workspace --all-targets -- -D warnings
 node --test scripts/prepare-client.test.mjs
-python3 scripts/check_static_assets.py client/dist
 ```
 
 `npm start` in client starts Vite on 4250. `cargo run --locked -- start` in server runs the

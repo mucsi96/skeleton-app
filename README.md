@@ -53,7 +53,6 @@ cd client && npm run lint && npm run build
 cd server && cargo fmt --all --check && cargo clippy --locked --workspace --all-targets -- -D warnings
 cd test && npm test
 node --test scripts/prepare-client.test.mjs
-python3 scripts/check_static_assets.py client/dist
 ```
 
 Run each command from the repository root. Start the test pod with

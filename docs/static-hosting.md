@@ -46,11 +46,6 @@ Azure website endpoints do not support CORS. Browser assets therefore use Blob
 URLs with CORS restricted to the app origin and GET/HEAD/OPTIONS. The gateway
 has no asset catchall; it serves only SPA documents.
 
-`python3 scripts/check_static_assets.py <build-directory>` exercises the actual
-build in Chromium with separate origins: modules, lazy chunks, styles, fonts,
-icons, manifest navigation, CORS enforcement, credential isolation and same-origin
-API calls.
-
 ## Shared contract with Cooking and Observatory
 
 All three clients use `static-client-app` 5.0.0 and the same hosting/auth deployment
