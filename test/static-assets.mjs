@@ -22,11 +22,7 @@ try {
   assert.equal(await page.evaluate(() => '__APP_CONFIG__' in window), false);
   await expect(page.getByRole('heading', { name: 'Welcome, World' })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
-  await page.evaluate(async () => {
-    for (const font of ['400 16px Roboto']) {
-      if (!(await document.fonts.load(font)).length) throw new Error(`Missing bundled font: ${font}`);
-    }
-  });
+  await expect(page.locator('body')).toHaveCSS('font-family', 'system-ui');
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Welcome, World' })).toBeVisible();
   assert.equal(await page.evaluate(() => document.baseURI), `${appOrigin}/`);
@@ -44,7 +40,8 @@ try {
     image.src = url;
   }), new URL(manifest.icons[0].src, `${assetBaseUrl}manifest.webmanifest`).href);
 
-  for (const suffix of ['.js', '.css', '.woff2', '.png']) {
+  assert(!assets.some(url => /\.(woff2?|ttf|otf)(\?|$)/.test(url)), 'System fonts must not download font files');
+  for (const suffix of ['.js', '.css', '.png']) {
     assert(assets.some(url => url.endsWith(suffix)), `No ${suffix} request was exercised`);
   }
   assert(assets.some(url => /\/chunk-.*\.js$/.test(url)), 'Lazy/ES module chunks must load from storage');
