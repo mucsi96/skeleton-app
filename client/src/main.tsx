@@ -3,8 +3,6 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { initializeFaro } from '@grafana/faro-web-sdk';
 import '@mucsi96/react-ui/styles.css';
-import '@fontsource/roboto/400.css';
-import '@fontsource/roboto/700.css';
 import './styles.css';
 import { App } from './App';
 
