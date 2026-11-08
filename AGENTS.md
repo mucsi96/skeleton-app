@@ -23,7 +23,7 @@ This repository is the skeleton-sync source; it does not synchronize from itself
 - Use `@mucsi96/react-ui` components and its documented APIs, matching Observatory.
 - Colocate component styles in CSS Modules (`*.module.css`). Keep only theme tokens,
   typography defaults, and resets in the global stylesheet.
-- Dark theme, accessible semantic controls, skeleton loading states, actionable error states.
+- Dark theme, accessible semantic controls, shared LoadingArea loading states centered in their page or section, actionable error states.
 - Test React and Rust application behavior through the Playwright E2E suite;
   do not add React or Rust unit/integration test suites. Use role/text/label selectors.
 
