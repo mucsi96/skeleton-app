@@ -14,98 +14,280 @@ This repository is the skeleton-sync source; it does not synchronize from itself
 
 ## General Code Style
 
-- Avoid fallbacks, prefer failing fast.
-- Prefer functional programming patterns and immutable data structures.
-- Rust: Loco hooks and controllers, typed Serde payloads/settings, SeaORM queries, Tokio async I/O,
-  `Result` error propagation, and structured tracing. Never expose internal errors or secrets in API responses.
-- TypeScript: strict types, `const`, functional array methods, string literals over enums.
-- React: function components, hooks, TanStack Query for server state, Zod validation at API boundaries.
-- Use `@mucsi96/react-ui` components and its documented APIs, matching Observatory.
-- Colocate component styles in CSS Modules (`*.module.css`). Keep only theme tokens,
-  typography defaults, and resets in the global stylesheet.
-- Dark theme, accessible semantic controls, shared LoadingArea loading states centered in their page or section, actionable error states.
-- Test React and Rust application behavior through the Playwright E2E suite;
-  do not add React or Rust unit/integration test suites. Use role/text/label selectors.
+The target stack is Angular and Java/Spring Boot (GraalVM native). The November
+2026 React/Rust migration is reverted; do not reintroduce it through skeleton
+alignment or dependency maintenance. See `docs/stack-rollback.md`.
+
+- Avoid fallbacks, prefer failing fast
+- Prefer functional programming patterns
+- Prefer immutable data structures
+
+## Java Style
+
+- Use Lombok annotations (@Data, @Builder, @RequiredArgsConstructor)
+- Constructor injection (via @RequiredArgsConstructor)
+- Use Stream API for collections
+- Use records for DTOs/responses
+
+## TypeScript Style
+
+- Use `const` by default
+- Prefer spread operator for object/array operations
+- Use functional array methods (map, filter, reduce)
+- Use string literals over enums
+
+## Testing Style
+
+- Write tests from user perspective
+- Use role-based selectors (getByRole)
+- Use semantic selectors (getByText, getByLabel)
+- E2E tests with Playwright
+
+## Angular Style
+
+- Use Angular Material components
+- Follow `@mucsi96/angular-material-theme`'s documented button-color API: use `bt-color="primary|success|warn|error"` on `mat-flat-button`, `mat-raised-button`, `mat-fab` (including extended FABs), and `mat-mini-fab`, including anchor buttons. Use `[attr.bt-color]` for dynamic tones; no directive import is needed.
+- Solid buttons default to primary. Use `error` for destructive actions, `warn` for caution, and `success` for positive outcomes. Material's legacy `color="warn"` means error/red, not the theme's orange `bt-color="warn"`; migrate solid buttons accordingly.
+- For an arbitrary solid-button color, set only `--bt-button-bg` without `bt-color`. Let the theme derive label contrast and hover colors; do not override Material container/label/state-layer color tokens, `--mat-sys-primary`, or button `background`, `color`, and `:hover` separately. Keep the intended button variant; raised buttons support the same API and retain elevation.
+- The `bt-color` API does not cover text, outlined, icon, or menu buttons. Use their documented Material APIs instead; do not apply solid-button color workarounds to them. Check the installed theme README when upgrading or changing component styles.
+- Use signals and resources (not rxjs where possible)
+- Use string literals over enums
+- Standalone components
+
+## Design
+
+- Material UI dark theme
+- Skeleton loaders for loading states
+
+## Project Overview
+
+Reference application demonstrating patterns for:
+- CI/CD pipeline (GitHub Actions)
+- Deployment (Docker images published to registry)
+- Client (Angular 21 with Material UI)
+- Server (Spring Boot 4 with Java 21)
+- Authentication (Entra through platform oauth2-proxy and HttpOnly sessions)
+- Configuration (Azure Key Vault, Spring profiles)
+- AI integration (Anthropic Claude via Spring AI)
+- AI mocking (Express mock server)
+- Database (PostgreSQL with JPA)
+- Testing (Playwright E2E)
 
 ## Architecture
 
-- **client/** — React 19 + Vite static SPA, shared React UI, build-time Faro configuration.
-- **server/** — Loco, Rust 2024, SeaORM/PostgreSQL, Anthropic Messages API.
-- **mock_anthropic_server/** — Express mock for Claude API.
-- **test/** — Playwright E2E, gateway identity fixtures, Podman test pod.
-- **scripts/** — Build and deployment scripts.
-- **.github/workflows/** — CI/CD pipelines.
+- **client/** - Angular SPA with chart-owned Gateway document routing, direct Azure Blob assets and build-time Faro configuration
+- **server/** - Spring Boot 4 REST API with PostgreSQL, Spring AI
+- **mock_anthropic_server/** - Express mock for Claude API
+- **test/** - Playwright E2E tests
+- **scripts/** - Build and deployment scripts
+- **.github/workflows/** - CI/CD pipelines
 
-Toolchain versions are pinned in `server/rust-toolchain.toml` and lockfiles.
+## Key Technologies
 
-## Development and checks
+- Spring Boot 4, Java 21 (built into a GraalVM native image)
+- Angular 21.2.0
+- PostgreSQL 17
+- Spring AI 2.0.0-M2 (Anthropic)
+- Entra authentication through platform ForwardAuth
+- Azure Key Vault for secrets
+- Traefik reverse proxy
+- Docker multi-stage builds
+- Playwright for E2E testing
 
+## Development Commands
+
+### Frontend
 ```bash
-scripts/install_dependencies.sh
-scripts/pod_up.sh
-cd test && npm test
-cd client && npm run lint && npm run build
-cd server && cargo fmt --all --check && cargo clippy --locked --workspace --all-targets -- -D warnings
-node --test scripts/prepare-client.test.mjs
+cd client && npm start        # Start dev server
+cd client && npm run build    # Production build
 ```
 
-`npm start` in client starts Vite on 4250. `cargo run --locked -- start` in server runs the
-API; see README for required environment variables. `scripts/dev_db_up.sh` starts
-the standalone development database. Podman is a distro-level prerequisite; the
-Nix shell supplies Rust/Node and deployment tools.
+### Backend
+```bash
+cd server && mvn spring-boot:run -Dspring-boot.run.profiles=local  # Start with local profile
+```
 
-## Data and configuration
+Local development still runs on a plain JVM. The native image is built only by
+the container build - see **Native image and the baked-in Spring profile**
+below.
 
-- `GET /api/greeting` returns `{name,message,aiGreeting}` and requires a valid JWT,
-  `api-access` scope, and `readGreetings` role.
-- Preserve `hello.greetings` and its existing sequence. SeaORM migrations adopt the
-  Liquibase-created table and leave legacy changelog tables intact. Seed only new
-  databases; never overwrite or reseed existing user data.
-- `LOCO_ENV=production` loads existing `db-url`, `db-username`, `db-password`, `tenant-id`,
-  `api-client-id`, and `claude-api-key` secrets from `AZURE_KEYVAULT_ENDPOINT` using
-  Azure workload identity. JDBC PostgreSQL URLs remain accepted.
-- `LOCO_ENV=development|test` requires explicit DATABASE_URL/OIDC/Anthropic environment values.
-- One native Rust image supports all environments at runtime. No build profiles,
-  JVM, AOT processing, reflection hints, or secrets in the image.
-- `/healthz` reports readiness after migration/discovery and checks database access.
+### Podman Development
+```bash
+scripts/pod_up.sh             # Build images and start test pod
+scripts/pod_down.sh           # Stop and clean up test pod
+scripts/dev_db_up.sh          # Start development PostgreSQL database
+scripts/dev_db_down.sh        # Stop development database
+```
 
-## Authentication and static hosting
+### Testing
+```bash
+cd test && npm test           # Run E2E tests
+cd test && npx playwright test --ui  # Interactive test runner
+```
 
-- The platform owns oauth2-proxy, login configuration, and HttpOnly sessions. The
-  client chart owns authenticated SPA documents and index URL rewriting; the API
-  chart owns API auth/header policies.
-- Validate JWT signature, issuer, audience, expiry/not-before, scope, and role in
-  the API even when requests arrive through ForwardAuth.
-- Keep CSRF checks active on all unsafe requests, including proxy-injected bearer
-  requests. Use Secure, host-only `__Host-XSRF-TOKEN` at `/` and require its matching
-  `X-XSRF-TOKEN` header. The same-origin fetch helper sends CSRF proof on mutations.
-- No frontend OAuth service, auth interceptor, guard, or sign-in/out UI. Userinfo
-  is read-only profile data. E2E fixtures mock gateway identity; do not duplicate
-  platform oauth2-proxy/Redis session-flow tests.
-- Compile Faro's public app name and `/_telemetry/collect` path into the bundle;
-  resolve against the browser's application origin, not the Blob asset origin.
-- Bootstrap directly without global config, HTML markers, an environment endpoint,
-  or config fetch. Omit chart `runtimeConfig` and retain `--reset-values`.
-- Faro's same-origin logging route has credential stripping and collector
-  origin/rate-limit controls.
-- Build with Node/npm. Upload the tested `client/dist` artifact to Azure Storage
-  with official `azure/login` / `azure/cli` actions; index is uploaded last.
-- `prepare-client.mjs` rewrites HTML asset URLs only. Vite uses relative imports
-  so modules, lazy chunks, CSS, fonts, icons, and manifests load directly from Blob
-  storage with anonymous CORS. Document base remains `/`.
-- Deploy reads `forward-auth-config.auth` for both charts. Pass the hostname in
-  `client-storage-config` to `static-client-app.staticOrigin`. Production has no
-  client Deployment or probes. Do not pass generated policy lists.
-- E2E mounts `client/dist` into stock nginx behind Traefik. See docs/static-hosting.md.
+## API Routes
 
-## Release and image publishing
+- `GET /api/greeting` - AI-powered greeting (authenticated)
+
+## Data Model
+
+- **greetings** - Stores name and message used for AI greeting generation
+
+## Configuration Patterns
+
+### Spring Profiles
+- **prod** - Production with Azure Key Vault and AAD
+- **local** - Local development with Podman DB
+- **test** - Mock OIDC/AI services with backend JWT validation enabled
+
+## Native image and the baked-in Spring profile
+
+The server is compiled ahead of time into a GraalVM native executable linked
+against musl, so there is no JRE in the runtime image and startup is in the tens
+of milliseconds rather than seconds.
+
+Ahead-of-time processing resolves bean definitions at build time, which means
+the active Spring profile is decided by the build, not by the environment:
+Spring AOT emits an `EnvironmentPostProcessor` that activates the profile the
+image was built with. `SPRING_PROFILES_ACTIVE` is no longer read at runtime, and
+`test/test-pod.yaml` no longer sets it. Build one image per profile with the
+`SPRING_PROFILE` build argument - `test` for the e2e pod, `prod` for the image
+published to GHCR:
+
+```bash
+podman build --build-arg SPRING_PROFILE=test \
+  -t localhost/skeleton-app-server:test server
+```
+
+Build-time details that live in `server/pom.xml` and are easy to trip over:
+
+- AOT processing refreshes the application context, so every placeholder an
+  auto-configuration condition reads has to resolve during the build. The
+  `process-aot` execution supplies build-time stand-ins for them and turns the
+  Key Vault property source off, so the build never reaches out to Azure. The
+  stand-ins are not baked into the image; they only have to make the same
+  conditions match as the real values do at runtime. A new required environment
+  placeholder read by a condition means adding it there too. Placeholders that
+  are only read while creating beans (`${db-url}`, `${claude-api-key}`) are
+  resolved at runtime as before and need nothing.
+- Spring AOT generates bean-definition classes into the packages of the
+  configuration classes it processes, including the signed Spring Cloud Azure
+  jars. Mixing generated (unsigned) and signed classes in one package makes the
+  native-image builder throw `SecurityException: ... signer information does not
+  match`, so the builder is pointed at `server/native-image.security`, which
+  disables jar signature verification.
+- Jars can ship a `META-INF/native-image/.../native-image.properties` that forces
+  classes to build-time initialization. When such a class holds on to objects of
+  types that are still initialized at run time, the builder fails with
+  `UnsupportedFeatureException: An object of type ... was found in the image
+  heap`. `--initialize-at-build-time` in the `native-maven-plugin` config covers
+  the Jackson core classes `azure-core` leaves behind that way. Note that a build
+  cannot undo such a directive: `exclude-config` does not apply to
+  `native-image.properties`, and `initialize-at-run-time` for the same class is
+  rejected outright. That is why `azure-core` is pinned ahead of the version the
+  Azure BOM selects - the BOM's 1.58.0 forces SLF4J and logback to build-time
+  initialization, which is irreconcilable with Spring Boot setting logging up at
+  run time. Check this again when the Azure BOM moves.
+- The Azure SDK's `ExpandableStringEnum` constants are built by instantiating the
+  subclass reflectively, and `fromString` returns `null` rather than failing when
+  it cannot. Missing reflection metadata therefore surfaces as every constant of
+  a class being `null` and a `NullPointerException` far from the cause.
+  `AzureNativeHints` registers the subclasses azure-identity does not ship
+  metadata for.
+- azure-core decides how to read a response body by asking the model class
+  whether it declares the `fromXml` / `fromJson` pair azure-xml and azure-json
+  generate, and it asks with `Class.getDeclaredMethods()`. In a native image that
+  returns nothing for a class with no reachability metadata, so the answer is
+  silently "no" and azure-core falls back to Jackson - for XML that means an
+  `XmlMapper`, and jackson-dataformat-xml is not on the classpath, so the call
+  dies with a `NoClassDefFoundError`. The SDK ships metadata for most of its
+  models but not all. `AzureNativeHints` scans `com.azure` and registers every
+  `XmlSerializable`, `JsonSerializable` and `HttpResponseException` instead of
+  naming the ones missing today, so an SDK upgrade cannot reintroduce this.
+- The Key Vault property source is configured by an `EnvironmentPostProcessor`
+  that runs before there is an application context and reads its own settings
+  with a plain `Binder` over `AzureKeyVaultSecretProperties`. Nothing in the
+  framework infers that, and the auto-configuration that would otherwise
+  contribute the binding metadata for that type never matches here - it is
+  conditional on `spring.cloud.azure.keyvault[.secret].endpoint`, while this
+  application configures the endpoint under `...secret.property-sources[0]`. With
+  no members in the image the binder binds nothing, and an absent binding is
+  indistinguishable from an empty configuration, so the post-processor quietly
+  concludes there is no property source to add. Nothing fails at that point: the
+  image starts and then dies much later on the first secret-backed placeholder.
+  `KeyVaultPropertySourceNativeHints` supplies the metadata. Only the prod
+  profile reads secrets from Key Vault, so no test covers this - after changing
+  anything about the Key Vault configuration, check that the generated
+  `target/spring-aot/main/resources/META-INF/native-image/**/reachability-metadata.json`
+  still carries `AzureKeyVaultSecretProperties` and
+  `AzureKeyVaultPropertySourceProperties` with their accessors.
+
+Spring Cloud Azure needs one workaround in application code:
+`AzureGlobalPropertiesConfiguration` re-declares the `AzureGlobalProperties`
+bean. Spring Cloud Azure registers it from an `ImportBeanDefinitionRegistrar`
+using a lambda instance supplier, which AOT cannot turn into generated code, so
+it drops the bean and the image fails to start with "required a bean of type
+AzureGlobalProperties that could not be found". See the class comment for why it
+uses its own bean name. That workaround turns on Spring Cloud Azure's
+registration order, which is not a public contract, so smoke-test the image
+whenever `spring-cloud-azure-dependencies` moves - a change there could drop the
+bean again with no compile-time signal.
+
+The image is deliberately not built with `--static`. A fully static binary links
+but then segfaults the moment it starts in the container - before GraalVM
+installs its own segfault handler, so with no output whatsoever, which looks
+exactly like a container that silently never starts.
+
+### Reproducing AOT problems without a native build
+
+Most AOT problems reproduce without waiting for a native compile (which takes
+several minutes). Run the AOT-processed application on a normal JVM:
+
+```bash
+cd server
+mvn -Pnative package -DskipTests -Dapp.profile=test
+java -Dspring.aot.enabled=true -jar target/skeleton-0.0.1-SNAPSHOT.jar
+```
+
+That exercises the generated context - missing bean definitions, profile and
+condition mismatches - in seconds. Only class-initialization and reflection
+problems need the real `mvn -Pnative native:compile`.
+
+Types that are only ever bound reflectively need explicit hints. Controller
+request/response types, JPA entities and Spring Data repositories are covered by
+the framework's own AOT processing and need nothing. Types read with a plain
+`ObjectMapper` want `@RegisterReflectionForBinding`; types bound by a `Binder`
+rather than Jackson want `BindableRuntimeHintsRegistrar`, which registers exactly
+what `JavaBeanBinder` looks for over the whole class hierarchy - see
+`KeyVaultPropertySourceNativeHints`.
+
+### Release and image publishing
 
 `publish-server` publishes numbered GHCR images only when
-`get_next_version.outputs.hasNextVersion == 'true'`, using its `version` output.
-Use job-scoped `packages: write` and `GITHUB_TOKEN`. Release tags target
-`${{ github.sha }}`. Forward the action's version output directly to deployment;
-do not add a consumer-side tag lookup. The workflow serializes publication/rollout.
-Require numbered GHCR tags or digests, the GHCR source label, and a public server
-package for anonymous pulls. Use `rust-app` for the API while preserving the
-`hello-server` release, workload identity, `/api` route and existing database.
-`publish-client` attaches the tested static archive to numbered client releases.
+`get_next_version.outputs.hasNextVersion == 'true'`, tagging them with
+`get_next_version.outputs.version`. Authentication uses `GITHUB_TOKEN` with
+job-scoped `packages: write`. Release tags use `target_commitish: ${{ github.sha }}`.
+The action always returns `version` and `tag`, including the current reachable
+release when unchanged; `hasNextVersion` alone controls publication. Forward its
+version output directly to deployment without a consumer-side tag lookup.
+The workflow serializes publication and rollout; require numbered GHCR tags or
+digests.
+The server Dockerfile carries its GHCR source label.
+The server package must be public for anonymous Kubernetes pulls.
+`publish-client` attaches the tested static build archive to numbered client
+releases. Deployment uploads the same run's static artifact to Azure Storage using
+the official `azure/login` and `azure/cli` actions. Angular builds directly with
+Node/npm; there is no client Dockerfile or image publication. Node prepares asset
+URLs, Azure CLI batch-uploads assets, and index is uploaded last. Local/E2E tests
+mount `client/dist` into stock nginx behind Traefik. See docs/static-hosting.md.
+
+### Build Configuration and Document Authentication
+- The client chart owns SPA routes, document auth and index URL rewriting. API charts own API auth/header policies. The platform supplies the proxy, login configuration and credentials.
+- Compile the public Faro app name and `/_telemetry/collect` path into the bundle; resolve the URL against the browser's application origin, not the Blob asset origin.
+- Bootstrap directly without a global config, HTML marker, environment endpoint or config fetch. Omit chart `runtimeConfig` and use `--reset-values` to remove its former middleware.
+- Deploy reads the proxy reference from `forward-auth-config.auth` and passes it to each chart's `auth` value. Storage metadata is `client-storage-config`; pass its hostname to the dedicated `static-client-app` chart's `staticOrigin`. Keep the client HTTPRoute; production has no client Deployment or probes. Do not pass generated policy lists.
+- Faro uses the exact same-origin logging route with credential stripping and collector origin/rate-limit controls.
+- No frontend auth service/interceptor/guard or sign-in/out UI. Userinfo is read-only profile data.
+- Use Spring Security SPA CSRF and Angular's built-in XSRF support. Keep CSRF checks
+  active for proxy-injected bearer requests; do not add a custom Origin filter.
+- App E2E fixtures mock gateway identity and profile data; do not run oauth2-proxy/Redis or duplicate platform session-flow tests.

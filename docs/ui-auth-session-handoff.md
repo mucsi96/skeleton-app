@@ -81,8 +81,8 @@ before creating a PR; do not merge its whole history blindly.
 7. API checks use private `/oauth2/auth` and return 401/403, not HTML redirects;
    document checks use private proxy `/` to start login. Preserve backend JWT
    issuer/audience/scope/roles and mutation CSRF, including proxy-bearer requests.
-   Skeleton keeps host-only double-submit CSRF with `__Host-XSRF-TOKEN` / `X-XSRF-TOKEN`; its
-   middleware intentionally requires proof even for bearer requests.
+   Skeleton keeps Spring SPA CSRF with `__Host-XSRF-TOKEN` / `X-XSRF-TOKEN`; its
+   matcher intentionally overrides bearer-request CSRF exemptions.
 8. Faro uses `https://<app-host>/_telemetry/collect`. Logging owns its exact
    POST/OPTIONS route to `/collect`, strips credentials and keeps origin/rate
    controls. Azure Storage hosting is future work, not provisioned here.

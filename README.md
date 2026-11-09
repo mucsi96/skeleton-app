@@ -1,143 +1,153 @@
 # Skeleton App
 
-A full-stack React and Loco application with authenticated greetings and AI integration.
+Reference application for all future projects. Based on patterns from [learn-language](https://github.com/mucsi96/learn-language).
 
-## Stack
+## Patterns Covered
 
-- **API:** Loco, Rust 2024, SeaORM/PostgreSQL, Tokio, typed Serde settings.
-- **Client:** React 19, Vite, TypeScript, CSS Modules, TanStack Query, Zod, `@mucsi96/react-ui`.
-- **AI:** Anthropic Messages API (`claude-sonnet-4-6`), Express mock for E2E.
-- **Authentication:** platform oauth2-proxy/Entra, HttpOnly sessions, backend JWT validation.
-- **Configuration:** Azure Key Vault via workload identity in production.
-- **Delivery:** GitHub Actions, native Rust container, Azure Blob static assets,
-  chart-owned authenticated Gateway documents and API routes.
-- **Testing:** Playwright end-to-end tests against the containerized application.
+- **CI/CD Pipeline** - GitHub Actions with E2E testing and image publishing
+- **Deployment** - Docker multi-stage builds with Traefik reverse proxy
+- **Client** - Angular 21 with Material UI dark theme
+- **Server** - Spring Boot 4 with Java 21, compiled ahead of time into a GraalVM native image
+- **Authentication** - Entra through stock oauth2-proxy ForwardAuth and HttpOnly sessions
+- **Configuration** - Azure Key Vault + Spring profiles (prod/local/test)
+- **AI Integration** - Anthropic Claude via Spring AI
+- **AI Mocking** - Express mock server for testing
+- **Database** - PostgreSQL with Spring Data JPA
+- **Testing** - Playwright E2E tests
+- **UI Components** - Material UI with custom dark theme
+- **Fetching** - Angular resource API with HttpClient
 
-## Quick start
+## Authentication and deployment
 
-Install Podman separately (on WSL enable systemd). The Nix dev shell supplies
-Rustup, Node and deployment tools; Rust is pinned in `server/rust-toolchain.toml`.
+See [static client deployment](docs/static-hosting.md) for the direct Node build,
+Azure CLI publishing, permissions and browser checks.
+
+The dedicated `static-client-app` Helm chart owns SPA document routing and inline runtime
+configuration. Its Gateway document rule uses its own authentication middleware
+before rewriting deep links to `/index.html`. Index HTML is authenticated before
+Angular scripts are served; ordinary bundles remain public. Scripts, styles, fonts,
+icons and manifests load directly from Azure Blob URLs with application-origin
+CORS. nginx is only the local/E2E origin. Missing assets return 404.
+There is no `/api/environment` endpoint or
+configuration fetch before bootstrap.
+There is no frontend auth service, auth interceptor, route guard or login/logout
+UI. A read-only `/oauth2/userinfo` resource supplies the header profile menu.
+
+The API keeps JWT audience/scope/role validation and uses Spring Security's built-in
+SPA CSRF protection for unsafe requests, including proxy-injected bearer requests.
+The initial API GET sets a Secure, host-only `__Host-XSRF-TOKEN` cookie at
+`/`; Angular's built-in XSRF support sends its value as `X-XSRF-TOKEN` on same-origin
+mutations. This is a CSRF token, not an OAuth credential. There is no custom filter
+or auth interceptor, and no backend `BROWSER_ORIGIN` setting is needed.
+
+Platform Terraform owns `hello-oauth2-proxy` and its Secrets. Publish the shared
+app chart changes and provision the proxy reference/deploy permissions before
+deploying this app. The platform must enable external static origins and provision
+the client storage account before the first storage rollout.
+`scripts/deploy.sh` fails early if the auth release or middleware-capable
+charts are missing. It reads `.auth` from `forward-auth-config` in app Azure Key
+Vault: the proxy Service, port and mode. It passes that object to
+both charts' `auth` value; each chart creates its own middleware and policies.
+Both upgrades reset Helm values and supply the intended configuration, removing
+obsolete policy-list settings. New charts do not accept manual filter lists.
+No generated filter lists are read or assembled. Faro's public app name and
+same-origin collector path are compiled into the client bundle. Deployment omits
+`runtimeConfig`; `--reset-values` removes the former index-config middleware.
+The deploy identity has read access scoped to those deployment secrets. Backend
+session/login URL variables are no longer consumed. The client chart keeps its
+own route but creates no Deployment, environment Secret or probes in storage mode.
+The proxy owns OAuth and session renewal; an
+unrenewable session re-enters login on the next page load.
+All apps use the host-only `__Host-session` cookie; separate hostnames keep browser
+sessions separate. Hello is always hosted at `/`, including all nested UI routes.
+
+The app tests use mock authentication. Playwright injects a mock-issued bearer
+token into browser API requests and supplies profile data. Documents are served
+without body rewriting. Backend JWT
+validation and Spring CSRF checks stay enabled. Test pods run the app, database, mock OIDC/AI services
+and routing, without oauth2-proxy or Redis. Playwright targets `http://localhost:8150`.
+
+The build contains all public frontend configuration; there is no HTML bootstrap
+marker, configuration fetch or response-body middleware. The gateway authenticates
+documents and rewrites deep links to index, with no-store and credential stripping.
+
+Faro uses the absolute same-origin URL `https://hello.<domain>/_telemetry/collect`.
+The logging module owns that exact collector route, rewriting to `/collect` and
+stripping app cookies/bearer/CSRF headers. Browser collection needs no cross-origin
+preflight; the receiver keeps its explicit origin allowlist and rate limits.
+Full Gateway/proxy integration lives in the shared chart regression.
+
+## One image per Spring profile
+
+The server is shipped as a GraalVM native executable. Bean definitions are
+resolved during ahead-of-time processing at build time, so the active Spring
+profile is baked into the executable and cannot be chosen at startup any more.
+The server image is therefore built once per profile, via the `SPRING_PROFILE`
+build argument:
 
 ```bash
-nix develop
+podman build --build-arg SPRING_PROFILE=test -t skeleton-app-server:test server   # e2e pod
+podman build --build-arg SPRING_PROFILE=prod -t skeleton-app-server:prod server   # published image
+```
+
+`SPRING_PROFILES_ACTIVE` is not read at runtime; the pipeline builds the test
+image for the e2e job and the prod image when publishing to GHCR. Running
+the server on a JVM for local development is unaffected - `mvn spring-boot:run
+-Dspring-boot.run.profiles=local` still selects the profile the usual way.
+
+## AI Pattern Sync
+
+This repository publishes a diff of the last 2 weeks of changes to GitHub Pages. AI agents on other projects can fetch this diff to stay in sync with the latest patterns from skeleton-app.
+
+- **Commits**: `https://mucsi96.github.io/skeleton-app/commits.txt`
+- **Diff**: `https://mucsi96.github.io/skeleton-app/diff.patch` (or `https://mucsi96.github.io/skeleton-app/diff.txt` to view inline in browser)
+
+The pages build runs on every push to main, weekly on Monday, and on manual dispatch.
+
+## Port Mapping
+
+All host-exposed ports use the **xx50–xx59** range for their last two digits to avoid clashes with other local projects.
+
+| Port | Service              | Context                             |
+|------|----------------------|-------------------------------------|
+| 3050 | Mock Anthropic API   | Test pod                            |
+| 4250 | Angular dev server   | Local dev                           |
+| 5450 | PostgreSQL           | Dev database                        |
+| 5451 | PostgreSQL           | Test pod                            |
+| 8050 | Mock OAuth2 provider | Test pod                            |
+| 8053 | Spring Boot server   | Local dev (VSCode)                  |
+| 8054 | Spring Boot server   | Test pod (internal, behind Traefik) |
+| 8150 | Traefik (web)        | Test pod                            |
+| 8151 | Traefik (admin)      | Test pod                            |
+| 8152 | Spring Actuator      | Local dev & test                    |
+
+## Development Environment
+
+System tooling (JDK 21, Maven, Node, jq, kubectl, helm, azure-cli) is provided by
+a Nix flake dev shell:
+
+```bash
+nix develop          # enter the dev shell manually
+# or, with direnv installed, `direnv allow` once and it loads automatically
+```
+
+Then install the per-project dependencies:
+
+```bash
 scripts/install_dependencies.sh
+```
+
+**Podman** is a distro-level prerequisite and is not managed by the flake
+(rootless Podman needs setuid `newuidmap`/`newgidmap` helpers the Nix store
+cannot provide). On WSL, enable `systemd=true` in `/etc/wsl.conf` and install it
+via your distro, e.g. `apt install podman`.
+
+## Quick Start
+
+```bash
+# Start test stack
 scripts/pod_up.sh
+
+# Run E2E tests
 cd test && npm test
 ```
-
-The pod includes PostgreSQL, the Rust API, mock OIDC/Anthropic services, nginx and
-Traefik. Playwright supplies gateway identity/profile fixtures; the API still
-verifies real mock-issued JWTs. Visit `http://localhost:8150` through those fixtures
-for authenticated data. No local oauth2-proxy/Redis stack is required.
-
-For a local Rust process, start the test pod for mock services, then:
-
-```bash
-scripts/dev_db_up.sh
-cd server
-LOCO_ENV=development PORT=8053 \
-DATABASE_URL=postgres://postgres:postgres@localhost:5450/skeleton \
-OIDC_ISSUER=http://localhost:8050/default API_CLIENT_ID=mock-api-client-id \
-ANTHROPIC_API_KEY=mock-anthropic-key ANTHROPIC_BASE_URL=http://localhost:3050 \
-cargo run --locked -- start
-```
-
-`cd client && npm start` runs Vite on 4250 with `/api` proxied to 8053. A direct
-development browser still needs gateway identity; it does not bypass backend auth.
-VS Code includes a Rust debug launch with the same local configuration.
-
-## Checks
-
-```bash
-cd client && npm run lint && npm run build
-cd server && cargo fmt --all --check && cargo clippy --locked --workspace --all-targets -- -D warnings
-cd test && npm test
-node --test scripts/prepare-client.test.mjs
-```
-
-Run each command from the repository root. Start the test pod with
-`scripts/pod_up.sh` before running Playwright. Application behavior is tested
-end-to-end in Playwright rather than React or Rust unit tests.
-
-## API, data and security
-
-`GET /api/greeting` reads the first row (by ID) of `hello.greetings`, requests a
-short greeting from Anthropic and returns `{name,message,aiGreeting}`. JWT validation
-requires RS256, the configured issuer/audience, valid time claims, `api-access`
-scope and `readGreetings` role. `/healthz` checks database access after startup
-migrations and OIDC discovery have succeeded.
-
-The initial API GET sets a readable Secure, host-only `__Host-XSRF-TOKEN` cookie
-at `/`, with SameSite=Lax. All unsafe API requests require matching `X-XSRF-TOKEN`
-proof, including requests with proxy-injected bearer credentials. The client fetch
-helper adds that proof only to same-origin mutations. OAuth tokens remain at the
-gateway; there is no sign-in/out UI or frontend token storage. `/oauth2/userinfo`
-only supplies the read-only profile menu.
-
-SeaORM migrations preserve the existing `hello.greetings` table, IDs, sequence and
-Liquibase changelog. Only a new database is seeded. No export/reset is required.
-
-## Runtime configuration and deployment
-
-One native Rust image supports all environments; no build-time profile is needed:
-
-```bash
-podman build -t localhost/skeleton-app-server:test server
-podman run --rm localhost/skeleton-app-server:test --version
-```
-
-`LOCO_ENV` selects `config/development.yaml`, `test.yaml` or `production.yaml`.
-Development/test require the environment
-variables shown above. Production uses `AZURE_KEYVAULT_ENDPOINT` and Azure workload
-identity (injected tenant/client/token-file variables) to read the existing secrets:
-`db-url`, `db-username`, `db-password`, `tenant-id`, `api-client-id`, `claude-api-key`.
-JDBC PostgreSQL URLs remain accepted. Secrets are loaded at startup. Production
-listens on `0.0.0.0:8080`; `PORT` overrides the port. Logging is configured in YAML.
-
-## Application structure
-
-- `client/src/`: function components with colocated CSS Modules; TanStack Query
-  owns server state and Zod validates API responses.
-- `server/src/app.rs`: Loco application hooks, routes and infrastructure setup.
-- `server/src/controllers/`: HTTP handlers; `models/`: SeaORM entities;
-  `services/`: typed external API clients; `middleware/`: JWT and CSRF enforcement.
-- `server/config/`: Loco environment configuration and typed application settings.
-- `server/migration/`: versioned SeaORM schema migrations, applied at startup.
-
-Run Loco commands from `server/`, for example `cargo run -- routes` or
-`cargo run -- db migrate`. Local overrides use `config/development.local.yaml`.
-
-The `hello-server` release uses `rust-app` 7.0.0 with workload identity,
-JWT configuration and `/api` routing. The server uses
-a non-root distroless image and handles SIGTERM gracefully. Production Key Vault
-access requires the existing workload identity federation and secret-read grants.
-
-See [static client deployment](docs/static-hosting.md). The tested Vite artifact
-is uploaded to Azure Storage; the `static-client-app` chart authenticates documents
-before rewriting deep links to index. Public modules/styles/fonts/icons load from
-Blob storage with anonymous CORS. API/profile/Faro requests stay on the application
-origin. Faro settings are compiled into the bundle; there is no runtime config
-marker, bootstrap fetch, or production client container. The logging route strips
-credentials and enforces collector origin/rate-limit controls.
-
-## Ports
-
-| Port | Service |
-|------|---------|
-| 3050 | Mock Anthropic |
-| 4250 | Vite dev server |
-| 5450 | Development PostgreSQL |
-| 5451 | Test PostgreSQL |
-| 8050 | Mock OIDC |
-| 8053 | Local Rust API |
-| 8054 | Test Rust API (pod-internal) |
-| 8150 | Test Traefik web |
-| 8151 | Test Traefik admin |
-
-## AI pattern sync
-
-This repository publishes the last two weeks of changes to GitHub Pages on main
-pushes, weekly, and on manual dispatch:
-
-- [Commits](https://mucsi96.github.io/skeleton-app/commits.txt)
-- [Diff](https://mucsi96.github.io/skeleton-app/diff.patch)

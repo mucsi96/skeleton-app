@@ -13,13 +13,11 @@ test('document authentication redirects before any SPA scripts are loaded', asyn
 test('API validates bearer tokens', async ({ page, request, apiHeaders }) => {
   expect((await request.get('/api/greeting')).status()).toBe(401);
   expect((await request.get('/api/greeting', { headers: { Authorization: 'Bearer forged' } })).status()).toBe(401);
-  const greeting = await request.get('/api/greeting', { headers: apiHeaders });
-  expect(greeting.status()).toBe(200);
-  expect(greeting.headers()['cache-control']).toContain('no-store');
+  expect((await request.get('/api/greeting', { headers: apiHeaders })).status()).toBe(200);
   expect((await request.get('/api/environment', { headers: apiHeaders })).status()).toBe(404);
 });
 
-test('CSRF protection requires the cookie and matching header even with a bearer token', async ({ page, context, request, apiHeaders }) => {
+test('Spring CSRF protection requires the cookie and matching header even with a bearer token', async ({ page, context, request, apiHeaders }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Welcome, World' })).toBeVisible();
   const cookie = (await context.cookies()).find(value => value.name === '__Host-XSRF-TOKEN');
