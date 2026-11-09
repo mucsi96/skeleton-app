@@ -33,27 +33,39 @@ CLIENT_ORIGIN=$(jq -er '.hostname | select(test("^[a-z0-9.-]+\\.web\\.core\\.win
 echo "Updating Helm repositories..."
 helm repo add mucsi96 https://mucsi96.github.io/k8s-helm-charts --force-update
 
-serverChartVersion=7.0.0
+springAppChartVersion=37.0.0
 staticClientAppChartVersion=5.0.0
 
 helm status "$AUTH_RELEASE" --namespace hello >/dev/null
-helm show chart mucsi96/rust-app --version "$serverChartVersion" >/dev/null
+helm show chart mucsi96/spring-app --version "$springAppChartVersion" >/dev/null
 helm show chart mucsi96/static-client-app --version "$staticClientAppChartVersion" >/dev/null
 
-echo "Deploying server: $SERVER_IMAGE using rust-app chart $serverChartVersion"
+echo "Deploying server: $SERVER_IMAGE using spring-app chart $springAppChartVersion"
 
-# CPU limits are omitted; memory remains bounded at 256Mi.
-helm upgrade $SERVER_RELEASE_NAME mucsi96/rust-app \
+# CPU limits are intentionally omitted for the API (limits.cpu=null
+# clears the chart default): on a single-user node they only throttle
+# startup; memory limits are the ones that matter.
+#
+# The server is a GraalVM native executable, so there is no JVM metaspace, no
+# code cache and no JIT-compiled code to hold: it idles far below what a JRE
+# image would use, hence the smaller request. The request is what the
+# scheduler reserves around the clock, so it is sized for idle: metrics-server
+# reports a ~58Mi working set in production, so the request sits just above
+# that measurement.
+#
+# The limit is the opposite question and stays where it is: it has to cover the
+# idle footprint plus the 256Mi heap the image is capped at (see the ENTRYPOINT
+# in server/Dockerfile - keep the two in step).
+helm upgrade $SERVER_RELEASE_NAME mucsi96/spring-app \
     --install \
     --reset-values \
-    --version $serverChartVersion \
+    --version $springAppChartVersion \
     --set-string image="$SERVER_IMAGE" \
     --set host=$HOSTNAME \
     --set basePath=/api \
     --set-json auth="$PROXY_AUTH" \
     --set clientId=$API_CLIENT_ID \
     --set serviceAccountName=hello-api-workload-identity \
-    --set env.LOCO_ENV=production \
     --set env.AZURE_KEYVAULT_ENDPOINT=$AZURE_KEYVAULT_ENDPOINT \
     --set resources.requests.memory=64Mi \
     --set resources.requests.cpu=25m \

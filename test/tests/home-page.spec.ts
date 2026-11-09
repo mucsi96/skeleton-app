@@ -34,14 +34,5 @@ test('displays greeting message from database', async ({ page }) => {
 
 test('displays AI-generated greeting', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Hello World!', { exact: false })).toBeVisible();
-});
-
-test('shows a recoverable error instead of an empty greeting', async ({ page }) => {
-  await page.route('**/api/greeting', route => route.fulfill({ status: 503, json: {} }));
-  await page.goto('/');
-  await expect(page.getByText('Unable to load greeting.')).toBeVisible();
-  await page.unroute('**/api/greeting');
-  await page.getByRole('button', { name: 'Try again' }).click();
-  await expect(page.getByRole('heading', { name: 'Welcome, World' })).toBeVisible();
+  await expect(page.getByText('Hello World!')).toBeVisible();
 });

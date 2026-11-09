@@ -1,4 +1,3 @@
 .kube/
 postgres-data/
 .direnv/
-server/config/*.local.yaml

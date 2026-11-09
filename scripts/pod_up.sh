@@ -9,7 +9,10 @@ if [ "${SKIP_BUILD:-}" = "1" ]; then
   echo "Skipping image build (SKIP_BUILD=1)..."
 else
   echo "Building container images..."
-  podman build -t localhost/skeleton-app-server:test "$PROJECT_DIR/server" &
+  # The Spring profile is baked into the native executable during AOT
+  # processing, so the pod image has to be built with the test profile.
+  podman build --build-arg SPRING_PROFILE=test \
+    -t localhost/skeleton-app-server:test "$PROJECT_DIR/server" &
   server_build=$!
   (cd "$PROJECT_DIR/client" && npm ci && npm run build) &
   client_build=$!
