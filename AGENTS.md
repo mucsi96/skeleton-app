@@ -14,6 +14,10 @@ This repository is the skeleton-sync source; it does not synchronize from itself
 
 ## General Code Style
 
+- AI task prompts use Persona, Task, Context and Format sections. Text tasks use
+  typed responses and provider-native JSON schemas with field descriptions, not
+  embedded JSON examples. Media tasks retain native media output.
+
 The target stack is Angular and Java/Spring Boot (GraalVM native). The November
 2026 React/Rust migration is reverted; do not reintroduce it through skeleton
 alignment or dependency maintenance. See `docs/stack-rollback.md`.
